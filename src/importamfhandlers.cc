@@ -148,7 +148,7 @@ void ImportAmfHandlers::endElement(const XMLCh* const name)
                     el_vertices--;
                 else if(el_vertices > 0) {
                     if(0 == strcmp(el, "vertex")) {
-                        vertex v;
+                        amf_vertex v;
                         v.x = XMLString::transcode(el_x);
                         v.y = XMLString::transcode(el_y);
                         v.z = XMLString::transcode(el_z);
@@ -179,7 +179,7 @@ void ImportAmfHandlers::endElement(const XMLCh* const name)
                     el_volume--;
                 else if(el_volume > 0) {
                     if(0 == strcmp(el, "triangle")) {
-                        triangle t;
+                        amf_triangle t;
                         t.vs1 = XMLString::transcode(el_v1);
                         t.vs2 = XMLString::transcode(el_v2);
                         t.vs3 = XMLString::transcode(el_v3);
