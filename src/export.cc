@@ -70,13 +70,12 @@ std::string amf_dump_final(std::map<std::string,size_t> vertex_map, std::vector<
 	for(size_t i=0;i<triangles.size();i++) {
 		amf_triangle t = triangles[i];
 		output << "    <triangle>\r\n";
-		size_t index, indexx;
-		indexx = vertex_map[t.vs1];
-		output << "     <v1>" << indexx << "</v1>\r\n";
-		indexx = vertex_map[t.vs2];
-		output << "     <v2>" << indexx << "</v2>\r\n";
-		indexx = vertex_map[t.vs3];
-		output << "     <v3>" << indexx << "</v3>\r\n";
+		index = vertex_map[t.vs1];
+		output << "     <v1>" << index << "</v1>\r\n";
+		index = vertex_map[t.vs2];
+		output << "     <v2>" << index << "</v2>\r\n";
+		index = vertex_map[t.vs3];
+		output << "     <v3>" << index << "</v3>\r\n";
 		output << "    </triangle>\r\n";
 	}
 	output << "   </volume>\r\n"
