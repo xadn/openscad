@@ -50,6 +50,7 @@ Adding a new regression test:
 6) manually verify that the output is correct (tests/regression/<testapp>/mytest-expected.<suffix>)
 7) run the test normally and verify that it passes:
   $ ctest -R mytest
+8) use 'git status'/'git add' to add the generated files under tests/regression
 
 Adding a new example:
 ---------------------
