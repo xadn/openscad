@@ -81,11 +81,6 @@ win32 {
 CONFIG += qt
 QT += opengl
 
-# Fedora Linux + DSO fix
-linux*:exists(/usr/lib64/libGLU*)|linux*:exists(/usr/lib/libGLU*) {
-  LIBS += -lGLU
-}
-
 netbsd* {
    LIBS += -L/usr/X11R7/lib
    QMAKE_LFLAGS += -Wl,-R/usr/X11R7/lib
@@ -110,6 +105,7 @@ CONFIG += cgal
 CONFIG += opencsg
 CONFIG += boost
 CONFIG += eigen2
+LIBS += -lxerces-c
 
 #Uncomment the following line to enable QCodeEdit
 #CONFIG += qcodeedit
@@ -173,6 +169,7 @@ HEADERS += src/parsersettings.h \
            src/projectionnode.h \
            src/cgaladvnode.h \
            src/importnode.h \
+           src/importamfhandlers.h \
            src/transformnode.h \
            src/colornode.h \
            src/rendernode.h \
@@ -245,6 +242,7 @@ SOURCES += src/mathc99.cc \
            src/builtin.cc \
            src/export.cc \
            src/import.cc \
+           src/importamfhandlers.cc \
            src/renderer.cc \
            src/ThrownTogetherRenderer.cc \
            src/dxftess.cc \

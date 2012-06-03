@@ -135,6 +135,16 @@ endforeach()
 inclusion(BOOST_ROOT Boost_INCLUDE_DIRS)
 add_definitions(-DBOOST_FILESYSTEM_VERSION=3) # Use V3 for boost 1.44-1.45
 
+# Xerces
+find_library(XERCES_LIBRARY
+             xerces-c
+             HINTS $ENV{OPENSCAD_LIBRARIES}/lib)
+if (NOT XERCES_LIBRARY)
+  message(FATAL_ERROR "Xerces library not found")
+else ()
+  message(STATUS "Xerces library found: " ${XERCES_LIBRARY})
+endif ()
+
 # Mac OS X
 if(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
   FIND_LIBRARY(COCOA_LIBRARY Cocoa REQUIRED)
@@ -237,7 +247,7 @@ if (NOT GLEW_INCLUDE_DIR)
 	    NO_DEFAULT_PATH)
   find_library(GLEW_LIBRARY
                NAMES GLEW glew
-               HINTS ${GLEW_DIR}/lib
+               HINTS ${GLEW_DIR}/lib ${GLEW_DIR}/lib64
 	       NO_DEFAULT_PATH)
   if (NOT GLEW_LIBRARY)
     find_package(GLEW REQUIRED)
@@ -354,6 +364,7 @@ set(NOCGAL_SOURCES
   ../src/builtin.cc 
   ../src/dxftess.cc 
   ../src/import.cc
+  ../src/importamfhandlers.cc
   ../src/export.cc) 
 
 set(CGAL_SOURCES
@@ -412,59 +423,59 @@ add_library(tests-offscreen STATIC ${OFFSCREEN_SOURCES})
 # echotest
 #
 add_executable(echotest echotest.cc)
-target_link_libraries(echotest tests-nocgal tests-core ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(echotest tests-nocgal tests-core ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES} ${XERCES_LIBRARY})
 
 #
 # dumptest
 #
 add_executable(dumptest dumptest.cc)
-target_link_libraries(dumptest tests-nocgal ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(dumptest tests-nocgal ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES} ${XERCES_LIBRARY})
 
 #
 # modulecachetest
 #
 add_executable(modulecachetest modulecachetest.cc)
-target_link_libraries(modulecachetest tests-nocgal ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(modulecachetest tests-nocgal ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES} ${XERCES_LIBRARY})
 
 #
 # csgtexttest
 #
 add_executable(csgtexttest csgtexttest.cc CSGTextRenderer.cc CSGTextCache.cc)
-target_link_libraries(csgtexttest tests-nocgal ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(csgtexttest tests-nocgal ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES} ${XERCES_LIBRARY})
 
 #
 # csgtermtest
 #
 add_executable(csgtermtest csgtermtest.cc ../src/CSGTermEvaluator.cc)
-target_link_libraries(csgtermtest tests-nocgal ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(csgtermtest tests-nocgal ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES} ${XERCES_LIBRARY})
 
 #
 # cgaltest
 #
 add_executable(cgaltest cgaltest.cc)
 set_target_properties(cgaltest PROPERTIES COMPILE_FLAGS "-DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(cgaltest tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(cgaltest tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES} ${XERCES_LIBRARY})
 
 #
 # cgalstlsanitytest
 #
 add_executable(cgalstlsanitytest cgalstlsanitytest.cc)
 set_target_properties(cgalstlsanitytest PROPERTIES COMPILE_FLAGS "-DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(cgalstlsanitytest tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(cgalstlsanitytest tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES} ${OPENGL_LIBRARY} ${Boost_LIBRARIES} ${XERCES_LIBRARY})
 
 #
 # cgalpngtest
 #
 add_executable(cgalpngtest cgalpngtest.cc bboxhelp.cc ../src/CGALRenderer.cc ../src/renderer.cc ../src/rendersettings.cc)
 set_target_properties(cgalpngtest PROPERTIES COMPILE_FLAGS "-DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(cgalpngtest tests-offscreen tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES}  ${GLEW_LIBRARY} ${COCOA_LIBRARY} ${OPENGL_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(cgalpngtest tests-offscreen tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES}  ${GLEW_LIBRARY} ${COCOA_LIBRARY} ${OPENGL_LIBRARY} ${Boost_LIBRARIES} ${XERCES_LIBRARY})
 
 #
 # cgalcachetest
 #
 add_executable(cgalcachetest cgalcachetest.cc bboxhelp.cc)
 set_target_properties(cgalcachetest PROPERTIES COMPILE_FLAGS "-DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(cgalcachetest tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES}  ${GLEW_LIBRARY} ${COCOA_LIBRARY} ${OPENGL_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(cgalcachetest tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES}  ${GLEW_LIBRARY} ${COCOA_LIBRARY} ${OPENGL_LIBRARY} ${Boost_LIBRARIES} ${XERCES_LIBRARY})
 
 #
 # opencsgtest
@@ -472,7 +483,7 @@ target_link_libraries(cgalcachetest tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_
 
 add_executable(opencsgtest opencsgtest.cc csgtestcore.cc ../src/OpenCSGRenderer.cc ../src/ThrownTogetherRenderer.cc ../src/renderer.cc ../src/rendersettings.cc)
 set_target_properties(opencsgtest PROPERTIES COMPILE_FLAGS "-DENABLE_OPENCSG -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(opencsgtest tests-offscreen tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES} ${OPENCSG_LIBRARY} ${GLEW_LIBRARY} ${COCOA_LIBRARY} ${OPENGL_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(opencsgtest tests-offscreen tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES} ${OPENCSG_LIBRARY} ${GLEW_LIBRARY} ${COCOA_LIBRARY} ${OPENGL_LIBRARY} ${Boost_LIBRARIES} ${XERCES_LIBRARY} ${XERCES_LIBRARY})
 
 #
 # throwntogethertest
@@ -480,7 +491,7 @@ target_link_libraries(opencsgtest tests-offscreen tests-cgal ${CGAL_LIBRARY} ${C
 
 add_executable(throwntogethertest throwntogethertest.cc csgtestcore.cc ../src/OpenCSGRenderer.cc ../src/ThrownTogetherRenderer.cc ../src/renderer.cc ../src/rendersettings.cc)
 set_target_properties(throwntogethertest PROPERTIES COMPILE_FLAGS "-DENABLE_OPENCSG -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(throwntogethertest tests-offscreen tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES} ${OPENCSG_LIBRARY} ${GLEW_LIBRARY} ${COCOA_LIBRARY} ${OPENGL_LIBRARY} ${Boost_LIBRARIES})
+target_link_libraries(throwntogethertest tests-offscreen tests-cgal ${CGAL_LIBRARY} ${CGAL_3RD_PARTY_LIBRARIES} ${QT_LIBRARIES} ${OPENCSG_LIBRARY} ${GLEW_LIBRARY} ${COCOA_LIBRARY} ${OPENGL_LIBRARY} ${Boost_LIBRARIES} ${XERCES_LIBRARY})
 
 #
 # Tags tests as disabled. This is more convenient than removing them manually

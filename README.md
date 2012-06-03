@@ -95,6 +95,7 @@ you're compiling on below.
 * [GCC C++ Compiler (4.2 ->)](http://gcc.gnu.org/)
 * [Bison (2.4)](http://www.gnu.org/software/bison/)
 * [Flex (2.5.35)](http://flex.sourceforge.net/)
+* [xerces](http://xerces.apache.org/)
 
 ### Building for Mac OS X
 
