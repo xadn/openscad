@@ -32,7 +32,7 @@
 #include "printutils.h"
 #include "polyset.h"
 #include "dxfdata.h"
-
+#include "importamfhandlers.h"
 #ifdef ENABLE_CGAL
 #include "CGAL_Nef_polyhedron.h"
 #include "cgal.h"
@@ -121,31 +121,73 @@ void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 	CGAL::set_error_behaviour(old_behaviour);
 }
 
-struct triangle {
-    std::string vs1;
-    std::string vs2;
-    std::string vs3;
-};
+std::string amf_dump(std::vector<std::string> vertices, std::vector<amf_triangle> triangles)
+{
+	std::stringstream output;
+	output << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
+           << "<amf unit=\"millimeter\">\r\n"
+           << " <metadata type=\"cad\">OpenSCAD " << QUOTED(OPENSCAD_VERSION)
+#ifdef OPENSCAD_COMMIT
+           << " (git " << QUOTED(OPENSCAD_COMMIT) << ")"
+#endif
+           << "</metadata>\r\n"
+           << " <object id=\"0\">\r\n"
+           << "  <mesh>\r\n";
+    output << "   <vertices>\r\n";
+    for(size_t i=0;i<vertices.size();i++) {
+        std::string s = vertices[i];
+        output << "    <vertex><coordinates>\r\n";
+        char* chrs = new char[s.length()];
+        strcpy(chrs, s.c_str());
+        std::string coords = strtok(chrs, " ");
+        output << "     <x>" << coords << "</x>\r\n";
+        coords = strtok(NULL, " ");
+        output << "     <y>" << coords << "</y>\r\n";
+        coords = strtok(NULL, " ");
+        output << "     <z>" << coords << "</z>\r\n";
+        output << "    </coordinates></vertex>\r\n";
+    }
+    output << "   </vertices>\r\n";
+    output << "   <volume>\r\n";
+    for(size_t i=0;i<triangles.size();i++) {
+        amf_triangle t = triangles[i];
+        output << "    <triangle>\r\n";
+        size_t index;
+        index = std::distance(vertices.begin(), std::find(vertices.begin(), vertices.end(), t.vs1));
+        output << "     <v1>" << index << "</v1>\r\n";
+        index = std::distance(vertices.begin(), std::find(vertices.begin(), vertices.end(), t.vs2));
+        output << "     <v2>" << index << "</v2>\r\n";
+        index = std::distance(vertices.begin(), std::find(vertices.begin(), vertices.end(), t.vs3));
+        output << "     <v3>" << index << "</v3>\r\n";
+        output << "    </triangle>\r\n";
+    }
+    output << "   </volume>\r\n";
+    output << "  </mesh>\r\n"
+           << " </object>\r\n"
+           << "</amf>\r\n";
+	return output.str();
+}
+
 /*!
     Saves the current 3D CGAL Nef polyhedron as AMF to the given file.
     The file must be open.
  */
 void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 {
-    CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
-    try {
-    CGAL_Polyhedron P;
-  root_N->p3->convert_to_Polyhedron(P);
+	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
+	try {
+	CGAL_Polyhedron P;
+	root_N->p3->convert_to_Polyhedron(P);
 
-    typedef CGAL_Polyhedron::Vertex                                 Vertex;
-    typedef CGAL_Polyhedron::Vertex_const_iterator                  VCI;
-    typedef CGAL_Polyhedron::Facet_const_iterator                   FCI;
-    typedef CGAL_Polyhedron::Halfedge_around_facet_const_circulator HFCC;
+	typedef CGAL_Polyhedron::Vertex                                 Vertex;
+	typedef CGAL_Polyhedron::Vertex_const_iterator                  VCI;
+	typedef CGAL_Polyhedron::Facet_const_iterator                   FCI;
+	typedef CGAL_Polyhedron::Halfedge_around_facet_const_circulator HFCC;
 
     setlocale(LC_NUMERIC, "C"); // Ensure radix is . (not ,) in output
 
     std::vector<std::string> vertices;
-    std::vector<triangle> triangles;
+    std::vector<amf_triangle> triangles;
 
     for (FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
         HFCC hc = fi->facet_begin();
@@ -174,6 +216,7 @@ void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
             stream.str("");
             stream << x3 << " " << y3 << " " << z3;
             std::string vs3 = stream.str();
+						// amf
             if(std::find(vertices.begin(), vertices.end(), vs1) == vertices.end())
                 vertices.push_back(vs1);
             if(std::find(vertices.begin(), vertices.end(), vs2) == vertices.end())
@@ -187,53 +230,13 @@ void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
                 // so the default value of "1 0 0" can be used. If the vertices are not
                 // collinear then the unit normal must be calculated from the
                 // components.
-                triangle tri = {vs1, vs2, vs3};
+                amf_triangle tri = {vs1, vs2, vs3};
                 triangles.push_back(tri);
             }
         } while (hc != hc_end);
     }
 
-    output << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
-           << "<amf unit=\"millimeter\">\r\n"
-           << " <metadata type=\"cad\">OpenSCAD " << QUOTED(OPENSCAD_VERSION)
-#ifdef OPENSCAD_COMMIT
-           << " (git " << QUOTED(OPENSCAD_COMMIT) << ")"
-#endif
-           << "</metadata>\r\n"
-           << " <object id=\"0\">\r\n"
-           << "  <mesh>\r\n";
-    output << "   <vertices>\r\n";
-    for(size_t i=0;i<vertices.size();i++) {
-        std::string s = vertices[i];
-        output << "    <vertex><coordinates>\r\n";
-        char* chrs = new char[s.length()];
-        strcpy(chrs, s.c_str());
-        std::string coords = strtok(chrs, " ");
-        output << "     <x>" << coords << "</x>\r\n";
-        coords = strtok(NULL, " ");
-        output << "     <y>" << coords << "</y>\r\n";
-        coords = strtok(NULL, " ");
-        output << "     <z>" << coords << "</z>\r\n";
-        output << "    </coordinates></vertex>\r\n";
-    }
-    output << "   </vertices>\r\n";
-    output << "   <volume>\r\n";
-    for(size_t i=0;i<triangles.size();i++) {
-        triangle t = triangles[i];
-        output << "    <triangle>\r\n";
-        size_t index;
-        index = std::distance(vertices.begin(), std::find(vertices.begin(), vertices.end(), t.vs1));
-        output << "     <v1>" << index << "</v1>\r\n";
-        index = std::distance(vertices.begin(), std::find(vertices.begin(), vertices.end(), t.vs2));
-        output << "     <v2>" << index << "</v2>\r\n";
-        index = std::distance(vertices.begin(), std::find(vertices.begin(), vertices.end(), t.vs3));
-        output << "     <v3>" << index << "</v3>\r\n";
-        output << "    </triangle>\r\n";
-    }
-    output << "   </volume>\r\n";
-    output << "  </mesh>\r\n"
-           << " </object>\r\n"
-           << "</amf>\r\n";
+		output << amf_dump( vertices, triangles );
     //output << "endsolid OpenSCAD_Model\n";
     setlocale(LC_NUMERIC, "");      // Set default locale
 

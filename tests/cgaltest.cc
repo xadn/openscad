@@ -76,12 +76,13 @@ AbstractNode *find_root_tag(AbstractNode *n)
 
 int main(int argc, char **argv)
 {
-	if (argc != 2) {
-		fprintf(stderr, "Usage: %s <file.scad>\n", argv[0]);
+	if (argc != 3) {
+		fprintf(stderr, "Usage: %s [--amf|--stl] <file.scad>\n", argv[0]);
 		exit(1);
 	}
 
-	const char *filename = argv[1];
+	const char *outtype = argv[1];
+	const char *filename = argv[2];
 
 	Builtins::instance()->initialize();
 
@@ -123,7 +124,11 @@ int main(int argc, char **argv)
 
 	current_path(original_path);
 	if (!N.empty()) {
-		export_stl(&N, std::cout);
+		if ( strcmp( outtype, "--amf" ) == 0 ) {
+			export_amf(&N, std::cout);
+		} else {
+			export_stl(&N, std::cout);
+		}
 	}
 
 	Builtins::instance(true);
