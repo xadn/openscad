@@ -37,214 +37,175 @@
 #include "CGAL_Nef_polyhedron.h"
 #include "cgal.h"
 
+std::string amf_dump_final(std::map<std::string,size_t> vertex_map, std::vector<amf_triangle> triangles)
+{
+	std::stringstream output;
+	output << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
+		<< "<amf unit=\"millimeter\">\r\n"
+		<< " <metadata type=\"cad\">OpenSCAD " << QUOTED(OPENSCAD_VERSION)
+#ifdef OPENSCAD_COMMIT
+		<< " (git " << QUOTED(OPENSCAD_COMMIT) << ")"
+#endif
+		<< "</metadata>\r\n"
+		<< " <object id=\"0\">\r\n"
+		<< "  <mesh>\r\n"
+		<< "   <vertices>\r\n";
+	size_t index = 0;
+	std::map<std::string, size_t>::iterator i;
+	for( i=vertex_map.begin(); i!=vertex_map.end(); i++ ) {
+		std::string s = i->first;
+		vertex_map[s] = index++;
+		std::vector<std::string> coords;
+		boost::split( coords, s, boost::is_any_of(" ") );
+		assert( coords.size() == 3 ); // if not , somethings very wrong
+		output << ""
+			<< "    <vertex><coordinates>\r\n"
+			<< "     <x>" << coords[0] << "</x>\r\n"
+			<< "     <y>" << coords[1] << "</y>\r\n"
+			<< "     <z>" << coords[2] << "</z>\r\n"
+			<< "    </coordinates></vertex>\r\n";
+	}
+	output << "   </vertices>\r\n";
+	output << "   <volume>\r\n";
+	for(size_t i=0;i<triangles.size();i++) {
+		amf_triangle t = triangles[i];
+		output << "    <triangle>\r\n";
+		size_t index, indexx;
+		indexx = vertex_map[t.vs1];
+		output << "     <v1>" << indexx << "</v1>\r\n";
+		indexx = vertex_map[t.vs2];
+		output << "     <v2>" << indexx << "</v2>\r\n";
+		indexx = vertex_map[t.vs3];
+		output << "     <v3>" << indexx << "</v3>\r\n";
+		output << "    </triangle>\r\n";
+	}
+	output << "   </volume>\r\n"
+		<< "  </mesh>\r\n"
+		<< " </object>\r\n"
+		<< "</amf>\r\n";
+	return output.str();
+}
+
+
+std::string stl_dump_vertex( CGAL_Polyhedron::Vertex v[3], std::string vs[3])
+{
+	std::stringstream output;
+	// If vertices are collinear, the unit normal is meaningless
+	// so the default value of "1 0 0" can be used. If the vertices are not
+	// collinear then the unit normal must be calculated from the
+	// components.
+	if (!CGAL::collinear(v[0].point(),v[1].point(),v[2].point())) {
+		CGAL_Polyhedron::Traits::Vector_3 normal = CGAL::normal(v[0].point(),v[1].point(),v[2].point());
+		output << "  facet normal "
+			<< CGAL::sign(normal.x()) * sqrt(CGAL::to_double(normal.x()*normal.x()/normal.squared_length()))
+			<< " "
+			<< CGAL::sign(normal.y()) * sqrt(CGAL::to_double(normal.y()*normal.y()/normal.squared_length()))
+			<< " "
+			<< CGAL::sign(normal.z()) * sqrt(CGAL::to_double(normal.z()*normal.z()/normal.squared_length()))
+			<< "\n";
+	} else {
+		output << "  facet normal 1 0 0\n";
+	}
+	output << "    outer loop\n"
+		<< "      vertex " << vs[0] << "\n"
+		<< "      vertex " << vs[1] << "\n"
+		<< "      vertex " << vs[2] << "\n"
+		<< "    endloop\n"
+		<< "  endfacet\n";
+	return output.str();
+}
+
+/* core export functionality shared between AMF and STL. */
+std::string export_core(CGAL_Nef_polyhedron *root_N, std::string exptype)
+{
+	std::stringstream output;
+	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
+	try {
+	CGAL_Polyhedron P;
+	root_N->p3->convert_to_Polyhedron(P);
+
+	typedef CGAL_Polyhedron::Vertex Vertex;
+	typedef CGAL_Polyhedron::Vertex_const_iterator  VCI;
+	typedef CGAL_Polyhedron::Facet_const_iterator   FCI;
+	typedef CGAL_Polyhedron::Halfedge_around_facet_const_circulator HFCC;
+
+	setlocale(LC_NUMERIC, "C"); // Ensure radix is . (not ,) in output
+
+	if (exptype == "stl") output << "solid OpenSCAD_Model\n";
+
+	std::map<std::string,size_t> amf_vertex_map;
+	std::vector<amf_triangle> amf_triangles;
+
+	for (FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
+		HFCC hc = fi->facet_begin();
+		HFCC hc_end = hc;
+		Vertex v[3];
+		v[0] = *VCI((hc++)->vertex());
+		v[2] = *VCI((hc++)->vertex());
+		do {
+			v[1] = v[2];
+			v[2] = *VCI((hc++)->vertex());
+			double x[3],y[3],z[3];
+			x[0] = CGAL::to_double(v[0].point().x());
+			y[0] = CGAL::to_double(v[0].point().y());
+			z[0] = CGAL::to_double(v[0].point().z());
+			x[1] = CGAL::to_double(v[1].point().x());
+			y[1] = CGAL::to_double(v[1].point().y());
+			z[1] = CGAL::to_double(v[1].point().z());
+			x[2] = CGAL::to_double(v[2].point().x());
+			y[2] = CGAL::to_double(v[2].point().y());
+			z[2] = CGAL::to_double(v[2].point().z());
+			std::string vs[3];
+			for (int i=0;i<3;i++) {
+				std::stringstream stream;
+				stream << x[i] << " " << y[i] << " " << z[i];
+				vs[i] = stream.str();
+				if (exptype=="amf") amf_vertex_map[vs[i]]=0;
+			}
+
+			if (vs[0] != vs[1] && vs[0] != vs[2] && vs[1] != vs[2]) {
+				// The above condition ensures that there are 3 distinct vertices
+				if (exptype=="stl") {
+					output << stl_dump_vertex( v, vs );
+				} else if (exptype=="amf") {
+					amf_triangle tri = {vs[0], vs[1], vs[2]};
+					amf_triangles.push_back(tri);
+				}
+			}
+		} while (hc != hc_end);
+	}
+
+	if (exptype=="amf")
+		output << amf_dump_final( amf_vertex_map, amf_triangles );
+	else if (exptype=="stl")
+		output << "endsolid OpenSCAD_Model\n";
+
+	setlocale(LC_NUMERIC, "");  // Set default locale
+
+	} catch (CGAL::Assertion_exception e) {
+		PRINTB("CGAL error in CGAL_Nef_polyhedron3::convert_to_Polyhedron(): %s", e.what());
+	}
+	CGAL::set_error_behaviour(old_behaviour);
+	return output.str();
+}
+
 /*!
 	Saves the current 3D CGAL Nef polyhedron as STL to the given file.
 	The file must be open.
  */
 void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 {
-	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
-	try {
-	CGAL_Polyhedron P;
-  root_N->p3->convert_to_Polyhedron(P);
-
-	typedef CGAL_Polyhedron::Vertex                                 Vertex;
-	typedef CGAL_Polyhedron::Vertex_const_iterator                  VCI;
-	typedef CGAL_Polyhedron::Facet_const_iterator                   FCI;
-	typedef CGAL_Polyhedron::Halfedge_around_facet_const_circulator HFCC;
-
-	setlocale(LC_NUMERIC, "C"); // Ensure radix is . (not ,) in output
-
-	output << "solid OpenSCAD_Model\n";
-
-	for (FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
-		HFCC hc = fi->facet_begin();
-		HFCC hc_end = hc;
-		Vertex v1, v2, v3;
-		v1 = *VCI((hc++)->vertex());
-		v3 = *VCI((hc++)->vertex());
-		do {
-			v2 = v3;
-			v3 = *VCI((hc++)->vertex());
-			double x1 = CGAL::to_double(v1.point().x());
-			double y1 = CGAL::to_double(v1.point().y());
-			double z1 = CGAL::to_double(v1.point().z());
-			double x2 = CGAL::to_double(v2.point().x());
-			double y2 = CGAL::to_double(v2.point().y());
-			double z2 = CGAL::to_double(v2.point().z());
-			double x3 = CGAL::to_double(v3.point().x());
-			double y3 = CGAL::to_double(v3.point().y());
-			double z3 = CGAL::to_double(v3.point().z());
-			std::stringstream stream;
-			stream << x1 << " " << y1 << " " << z1;
-			std::string vs1 = stream.str();
-			stream.str("");
-			stream << x2 << " " << y2 << " " << z2;
-			std::string vs2 = stream.str();
-			stream.str("");
-			stream << x3 << " " << y3 << " " << z3;
-			std::string vs3 = stream.str();
-			if (vs1 != vs2 && vs1 != vs3 && vs2 != vs3) {
-				// The above condition ensures that there are 3 distinct vertices, but
-				// they may be collinear. If they are, the unit normal is meaningless
-				// so the default value of "1 0 0" can be used. If the vertices are not
-				// collinear then the unit normal must be calculated from the
-				// components.
-				if (!CGAL::collinear(v1.point(),v2.point(),v3.point())) {
-					CGAL_Polyhedron::Traits::Vector_3 normal = CGAL::normal(v1.point(),v2.point(),v3.point());
-					output << "  facet normal "
-								 << CGAL::sign(normal.x()) * sqrt(CGAL::to_double(normal.x()*normal.x()/normal.squared_length()))
-								 << " "
-								 << CGAL::sign(normal.y()) * sqrt(CGAL::to_double(normal.y()*normal.y()/normal.squared_length()))
-								 << " "
-								 << CGAL::sign(normal.z()) * sqrt(CGAL::to_double(normal.z()*normal.z()/normal.squared_length()))
-								 << "\n";
-				}
-				else output << "  facet normal 1 0 0\n";
-				output << "    outer loop\n";
-				output << "      vertex " << vs1 << "\n";
-				output << "      vertex " << vs2 << "\n";
-				output << "      vertex " << vs3 << "\n";
-				output << "    endloop\n";
-				output << "  endfacet\n";
-			}
-		} while (hc != hc_end);
-	}
-
-	output << "endsolid OpenSCAD_Model\n";
-	setlocale(LC_NUMERIC, "");      // Set default locale
-
-	}
-	catch (CGAL::Assertion_exception e) {
-		PRINTB("CGAL error in CGAL_Nef_polyhedron3::convert_to_Polyhedron(): %s", e.what());
-	}
-	CGAL::set_error_behaviour(old_behaviour);
-}
-
-std::string amf_dump(std::vector<std::string> vertices, std::vector<amf_triangle> triangles)
-{
-	std::stringstream output;
-	output << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\r\n"
-           << "<amf unit=\"millimeter\">\r\n"
-           << " <metadata type=\"cad\">OpenSCAD " << QUOTED(OPENSCAD_VERSION)
-#ifdef OPENSCAD_COMMIT
-           << " (git " << QUOTED(OPENSCAD_COMMIT) << ")"
-#endif
-           << "</metadata>\r\n"
-           << " <object id=\"0\">\r\n"
-           << "  <mesh>\r\n";
-    output << "   <vertices>\r\n";
-    for(size_t i=0;i<vertices.size();i++) {
-        std::string s = vertices[i];
-        output << "    <vertex><coordinates>\r\n";
-        char* chrs = new char[s.length()];
-        strcpy(chrs, s.c_str());
-        std::string coords = strtok(chrs, " ");
-        output << "     <x>" << coords << "</x>\r\n";
-        coords = strtok(NULL, " ");
-        output << "     <y>" << coords << "</y>\r\n";
-        coords = strtok(NULL, " ");
-        output << "     <z>" << coords << "</z>\r\n";
-        output << "    </coordinates></vertex>\r\n";
-    }
-    output << "   </vertices>\r\n";
-    output << "   <volume>\r\n";
-    for(size_t i=0;i<triangles.size();i++) {
-        amf_triangle t = triangles[i];
-        output << "    <triangle>\r\n";
-        size_t index;
-        index = std::distance(vertices.begin(), std::find(vertices.begin(), vertices.end(), t.vs1));
-        output << "     <v1>" << index << "</v1>\r\n";
-        index = std::distance(vertices.begin(), std::find(vertices.begin(), vertices.end(), t.vs2));
-        output << "     <v2>" << index << "</v2>\r\n";
-        index = std::distance(vertices.begin(), std::find(vertices.begin(), vertices.end(), t.vs3));
-        output << "     <v3>" << index << "</v3>\r\n";
-        output << "    </triangle>\r\n";
-    }
-    output << "   </volume>\r\n";
-    output << "  </mesh>\r\n"
-           << " </object>\r\n"
-           << "</amf>\r\n";
-	return output.str();
+	output << export_core( root_N, "stl");
 }
 
 /*!
-    Saves the current 3D CGAL Nef polyhedron as AMF to the given file.
-    The file must be open.
+Saves the current 3D CGAL Nef polyhedron as AMF to the given file.
+The file must be open.
  */
 void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 {
-	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
-	try {
-	CGAL_Polyhedron P;
-	root_N->p3->convert_to_Polyhedron(P);
+	output << export_core( root_N, "amf" );
 
-	typedef CGAL_Polyhedron::Vertex                                 Vertex;
-	typedef CGAL_Polyhedron::Vertex_const_iterator                  VCI;
-	typedef CGAL_Polyhedron::Facet_const_iterator                   FCI;
-	typedef CGAL_Polyhedron::Halfedge_around_facet_const_circulator HFCC;
-
-    setlocale(LC_NUMERIC, "C"); // Ensure radix is . (not ,) in output
-
-    std::vector<std::string> vertices;
-    std::vector<amf_triangle> triangles;
-
-    for (FCI fi = P.facets_begin(); fi != P.facets_end(); ++fi) {
-        HFCC hc = fi->facet_begin();
-        HFCC hc_end = hc;
-        Vertex v1, v2, v3;
-        v1 = *VCI((hc++)->vertex());
-        v3 = *VCI((hc++)->vertex());
-        do {
-            v2 = v3;
-            v3 = *VCI((hc++)->vertex());
-            double x1 = CGAL::to_double(v1.point().x());
-            double y1 = CGAL::to_double(v1.point().y());
-            double z1 = CGAL::to_double(v1.point().z());
-            double x2 = CGAL::to_double(v2.point().x());
-            double y2 = CGAL::to_double(v2.point().y());
-            double z2 = CGAL::to_double(v2.point().z());
-            double x3 = CGAL::to_double(v3.point().x());
-            double y3 = CGAL::to_double(v3.point().y());
-            double z3 = CGAL::to_double(v3.point().z());
-            std::stringstream stream;
-            stream << x1 << " " << y1 << " " << z1;
-            std::string vs1 = stream.str();
-            stream.str("");
-            stream << x2 << " " << y2 << " " << z2;
-            std::string vs2 = stream.str();
-            stream.str("");
-            stream << x3 << " " << y3 << " " << z3;
-            std::string vs3 = stream.str();
-						// amf
-            if(std::find(vertices.begin(), vertices.end(), vs1) == vertices.end())
-                vertices.push_back(vs1);
-            if(std::find(vertices.begin(), vertices.end(), vs2) == vertices.end())
-                vertices.push_back(vs2);
-            if(std::find(vertices.begin(), vertices.end(), vs3) == vertices.end())
-                vertices.push_back(vs3);
-
-            if (vs1 != vs2 && vs1 != vs3 && vs2 != vs3) {
-                // The above condition ensures that there are 3 distinct vertices, but
-                // they may be collinear. If they are, the unit normal is meaningless
-                // so the default value of "1 0 0" can be used. If the vertices are not
-                // collinear then the unit normal must be calculated from the
-                // components.
-                amf_triangle tri = {vs1, vs2, vs3};
-                triangles.push_back(tri);
-            }
-        } while (hc != hc_end);
-    }
-
-		output << amf_dump( vertices, triangles );
-    //output << "endsolid OpenSCAD_Model\n";
-    setlocale(LC_NUMERIC, "");      // Set default locale
-
-    }
-    catch (CGAL::Assertion_exception e) {
-        PRINTB("CGAL error in CGAL_Nef_polyhedron3::convert_to_Polyhedron(): %s", e.what());
-    }
-    CGAL::set_error_behaviour(old_behaviour);
 }
 
 void export_off(CGAL_Nef_polyhedron *root_N, std::ostream &output)
@@ -322,7 +283,7 @@ void export_dxf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 				 <<"EOF\n";
 
 	delete dd;
-	setlocale(LC_NUMERIC, "");      // Set default locale
+	setlocale(LC_NUMERIC, "");  // Set default locale
 }
 
 #endif
