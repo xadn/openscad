@@ -95,7 +95,7 @@ you're compiling on below.
 * [GCC C++ Compiler (4.2 ->)](http://gcc.gnu.org/)
 * [Bison (2.4)](http://www.gnu.org/software/bison/)
 * [Flex (2.5.35)](http://flex.sourceforge.net/)
-* [xerces](http://xerces.apache.org/)
+* [xerces-c 3.1](http://xerces.apache.org/)
 
 ### Building for Mac OS X
 
@@ -119,13 +119,19 @@ After that, follow the Compilation instructions below.
 
 ### Building for Ubuntu
 
-If you have done this and want to contribute, fork the repo and
-contribute docs on how to build for windows!
+Please see
+
+http://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Building_on_Linux/UNIX
 
 ### Building for Windows
 
-If you have done this and want to contribute, fork the repo and
-contribute docs on how to build for windows!
+The Visual C++ build has not been run since late 2011. Please see
+
+http://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Building_on_Windows
+
+The cross-compilation from linux->windows is described here:
+
+http://en.wikibooks.org/wiki/OpenSCAD_User_Manual/Cross-compiling_for_Windows_on_Linux_or_Mac_OS_X
 
 ### Compilation
 
