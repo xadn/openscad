@@ -262,13 +262,13 @@ PolySet *ImportNode::evaluate_polyset(class PolySetEvaluator *) const
 
 		p = new PolySet();
 
-		std::vector<triangle> ts = importHandler->getTriangles();
-		std::vector<vertex> vs = importHandler->getVertices();
+		std::vector<amf_triangle> ts = importHandler->getTriangles();
+		std::vector<amf_vertex> vs = importHandler->getVertices();
 		for(size_t i=0;i<ts.size();i++) {
-			triangle t = ts[i];
-			vertex v1 = vs.at(atoi(t.vs1.c_str()));
-			vertex v2 = vs.at(atoi(t.vs2.c_str()));
-			vertex v3 = vs.at(atoi(t.vs3.c_str()));
+			amf_triangle t = ts[i];
+			amf_vertex v1 = vs.at(atoi(t.vs1.c_str()));
+			amf_vertex v2 = vs.at(atoi(t.vs2.c_str()));
+			amf_vertex v3 = vs.at(atoi(t.vs3.c_str()));
 			p->append_poly();
 			p->append_vertex(atof(v1.x.c_str()), atof(v1.y.c_str()), atof(v1.z.c_str()));
 			p->append_vertex(atof(v2.x.c_str()), atof(v2.y.c_str()), atof(v2.z.c_str()));
