@@ -214,6 +214,9 @@ PolySet *ImportNode::evaluate_polyset(class PolySetEvaluator *) const
 
 	else if (this->type == TYPE_AMF)
 	{
+		PRINTB("WARNING: AMF import not implemented. :\n%s", message);
+		break;
+		// import is to buggy to use
 		handle_dep(this->filename);
 
 		try {

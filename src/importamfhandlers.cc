@@ -1,3 +1,5 @@
+// -- code crashes, don't use unless fixed. may 2012
+// maybe use AMF reference implementation instead.
 // ---------------------------------------------------------------------------
 //  Includes
 // ---------------------------------------------------------------------------
@@ -5,6 +7,8 @@
 #include <xercesc/sax/AttributeList.hpp>
 #include <xercesc/sax/SAXParseException.hpp>
 #include <xercesc/sax/SAXException.hpp>
+
+#include <iostream>
 
 // ---------------------------------------------------------------------------
 //  ImportHandlers: Constructors and Destructor
@@ -21,10 +25,12 @@ ImportAmfHandlers::ImportAmfHandlers() :
   , el_triangle(0)
   , fSawErrors(false)
 {
+	std::cout << "constr\n";
 }
 
 ImportAmfHandlers::~ImportAmfHandlers()
 {
+	std::cout << "desstr\n";
 }
 
 
@@ -35,6 +41,7 @@ void ImportAmfHandlers::startElement(const   XMLCh* const   name
                                     ,       AttributeList&  /* attributes */)
 {
     char* el = XMLString::transcode(name);
+	std::cout << "start elem:" << el << "\n";
     if(0 == strcmp(el, "amf"))
         el_amf = true;
     else if(el_amf) {
@@ -105,11 +112,13 @@ void ImportAmfHandlers::characters(  const   XMLCh* const    chars
     if(0 == strcmp("x", state)) {
         el_x = new XMLCh[XMLString::stringLen(chars)];
         XMLString::copyString(el_x, chars);
+	std::cout << "elem char:" << el_x << "\n";
         //el_x = (XMLCh*)chars;
     }
     else if(0 == strcmp("y", state)) {
         el_y = new XMLCh[XMLString::stringLen(chars)];
         XMLString::copyString(el_y, chars);
+	std::cout << "elem char:" << el_y << "\n";
     }
     else if(0 == strcmp("z", state)) {
         el_z = new XMLCh[XMLString::stringLen(chars)];
@@ -133,6 +142,7 @@ void ImportAmfHandlers::characters(  const   XMLCh* const    chars
 void ImportAmfHandlers::endElement(const XMLCh* const name)
 {
     char* el = XMLString::transcode(name);
+	std::cout << "end elem:" << el << "\n";
     if(0 == strcmp(el, "amf"))
         el_amf = false;
     else if(el_amf) {
@@ -216,6 +226,7 @@ void ImportAmfHandlers::ignorableWhitespace( const   XMLCh* const /* chars */
 
 void ImportAmfHandlers::resetDocument()
 {
+	std::cout << "reset\n";
   el_amf = false;
   el_object = 0;
   el_mesh = 0;
