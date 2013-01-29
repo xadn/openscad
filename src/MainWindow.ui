@@ -180,6 +180,7 @@
     <addaction name="designActionDisplayCSGTree"/>
     <addaction name="designActionDisplayCSGProducts"/>
     <addaction name="designActionExportSTL"/>
+    <addaction name="designActionExportAMF"/>
     <addaction name="designActionExportOFF"/>
     <addaction name="designActionExportDXF"/>
     <addaction name="designActionExportCSG"/>
@@ -430,6 +431,11 @@
   <action name="designActionExportSTL">
    <property name="text">
     <string>Export as &amp;STL...</string>
+   </property>
+  </action>
+  <action name="designActionExportAMF">
+   <property name="text">
+    <string>Export as &amp;AMF...</string>
    </property>
   </action>
   <action name="designActionExportOFF">
