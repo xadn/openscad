@@ -158,13 +158,14 @@ void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 	std::vector<triangle> triangles = get_nef_poly_triangles( *root_N );
 
 	// create vertex list, dont include duplicates
-	std::map<point,triangle*> vertexes;
+	std::map<point*,int> indexmap;
+	std::map<point> vertexes;
 	BOOST_FOREACH( triangle &t, triangles ) {
-		vertexes[ &t ] = &t;
-		vertexes[ t.p2 ] = &t;
-		vertexes[ t.p3 ] = &t;
-		indexmap[ t.p1 ] = 
+		vertexes.insert( t.p1 );
+		vertexes.insert( t.p2 );
+		vertexes.insert( t.p3 );
 	}
+	
 
 	output << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
          << "<amf unit=\"millimeter\">\n"
@@ -183,9 +184,9 @@ void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
   output << " <volume>\n";
   BOOST_FOREACH(triangle &t, triangles) {
   	output << " <triangle>\n"
-	 	       << " <v1>" << indexmap[ t.p1 ] << "</v1>\n"
-	         << " <v2>" << indexmap[ t.p2 ] << "</v2>\n"
-	         << " <v3>" << indexmap[ t.p3 ] << "</v3>\n"
+	 	       << " <v1>" << indexmap[ &(t.p1) ] << "</v1>\n"
+	         << " <v2>" << indexmap[ &(t.p2) ] << "</v2>\n"
+	         << " <v3>" << indexmap[ &(t.p3) ] << "</v3>\n"
 	         << " </triangle>\n";
   }
   output << " </volume>\n";
