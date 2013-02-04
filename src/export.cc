@@ -77,13 +77,9 @@ stl_point cgal_point_to_stl_point( const CGAL_Point_3 &p )
 	return pt;
 }
 
-std::vector<stl_triangle> get_cgal_poly_triangles( CGAL_Nef_polyhedron &N )
+std::vector<stl_triangle> get_cgal_poly_triangles( CGAL_Polyhedron &P )
 {
 	std::vector<stl_triangle> triangles;
-	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
-	try {
-	CGAL_Polyhedron P;
-  N.p3->convert_to_Polyhedron(P);
 
 	typedef CGAL_Polyhedron::Vertex                                 Vertex;
 	typedef CGAL_Polyhedron::Vertex_const_iterator                  VCI;
@@ -133,6 +129,17 @@ std::vector<stl_triangle> get_cgal_poly_triangles( CGAL_Nef_polyhedron &N )
 
 	setlocale(LC_NUMERIC, "");      // Set default locale
 
+	return triangles;
+}
+
+std::vector<stl_triangle> get_cgal_nef_poly_triangles( CGAL_Nef_polyhedron &N )
+{
+	std::vector<stl_triangle> triangles;
+	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
+	try {
+		CGAL_Polyhedron P;
+	  N.p3->convert_to_Polyhedron(P);
+		triangles = get_cgal_poly_triangles( P );
 	}
 	catch (CGAL::Assertion_exception e) {
 		PRINTB("CGAL error in CGAL_Nef_polyhedron3::convert_to_Polyhedron(): %s", e.what());
@@ -141,6 +148,7 @@ std::vector<stl_triangle> get_cgal_poly_triangles( CGAL_Nef_polyhedron &N )
 	return triangles;
 }
 
+
 /*!
 	Saves the current 3D CGAL Nef polyhedron as STL to the given file.
 	The file must be open.
@@ -148,7 +156,7 @@ std::vector<stl_triangle> get_cgal_poly_triangles( CGAL_Nef_polyhedron &N )
 void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 {
 	output << "solid OpenSCAD_Model\n";
-	std::vector<stl_triangle> triangles = get_cgal_poly_triangles( *root_N );
+	std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( *root_N );
 	BOOST_FOREACH( stl_triangle &t, triangles) {
 		output
       << "\n facet normal " << t.normal.x << " " << t.normal.y << " " << t.normal.z
@@ -165,28 +173,26 @@ void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 
 // save volumes
 void export_amf_volumes(CGAL_Nef_polyhedron *root_N, std::ostream &output,
-     std::vector<stl_triangle> &triangles,
-     std::map<stl_point,int> vertexmap1)
+     std::map<stl_point,int> &vertexmap1)
 {
 	CGAL_Nef_polyhedron3::Volume_const_iterator c;
 	CGAL_Nef_polyhedron3 N = *(root_N->p3);
   CGAL_forall_volumes(c,N) {
     if ((*c).mark()) { // only use inner volumes not outer volumes
-	    output << " <!--Processing volume...-->\n";
+		  output << " <volume>\n";
       CGAL_Polyhedron P;
       N.convert_inner_shell_to_polyhedron(c->shells_begin(), P);
-	    output << " <!--Processing volume end-->\n";
+			std::vector<stl_triangle> triangles = get_cgal_poly_triangles( P );
+		  BOOST_FOREACH(stl_triangle &t, triangles) {
+	  		output << "  <triangle>\n"
+	 	           << "   <v1>" << vertexmap1[ t.p1 ] << "</v1>\n"
+	             << "   <v2>" << vertexmap1[ t.p2 ] << "</v2>\n"
+	             << "   <v3>" << vertexmap1[ t.p3 ] << "</v3>\n"
+	             << "  </triangle>\n";
+		  }
+		  output << " </volume>\n";
 		}
   }
-  output << " <volume>\n";
-  BOOST_FOREACH(stl_triangle &t, triangles) {
-  	output << "  <triangle>\n"
-	 	       << "   <v1>" << vertexmap1[ t.p1 ] << "</v1>\n"
-	         << "   <v2>" << vertexmap1[ t.p2 ] << "</v2>\n"
-	         << "   <v3>" << vertexmap1[ t.p3 ] << "</v3>\n"
-	         << "  </triangle>\n";
-  }
-  output << " </volume>\n";
 }
 
 /*!
@@ -195,7 +201,7 @@ The file must be open.
 */
 void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 {
-	std::vector<stl_triangle> triangles = get_cgal_poly_triangles( *root_N );
+	std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( *root_N );
 
 	std::map<stl_point,int> vertexmap1;
 	std::map<int,stl_point> vertexmap2;
@@ -232,7 +238,7 @@ void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
            << "  </coordinates></vertex>\n";
   }
   output << " </vertices>\n\n";
-	export_amf_volumes( root_N, output, triangles, vertexmap1 );
+	export_amf_volumes( root_N, output, vertexmap1 );
   output << " </mesh>\n"
          << " </object>\n"
          << "</amf>\n";
