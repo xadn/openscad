@@ -38,34 +38,48 @@
 
 #include <Eigen/Geometry>
 
-struct point {
+struct stl_point {
 	std::string x, y, z;
-	bool operator!=( const point &p ) {
-		if (p.x!=x || p.y!=y || p.z!=z) return true; else return false;
-	}
-	std::string tostr() {
-		std::stringstream s;
-		s << x << " " << y << " " << z;
-		return s.str();
-	}
+	std::string const tostr() const;
 };
 
-struct triangle {
-	point p1, p2, p3, normal;
+struct stl_triangle {
+	stl_point p1, p2, p3, normal;
 };
 
-point cgal_point_to_pt( const CGAL_Point_3 &p )
+
+std::ostream&  operator<<( std::ostream &stream, const stl_point &p ) {
+	stream << p.x << " " << p.y << " " << p.z;
+	return stream;
+}
+
+std::string const stl_point::tostr() const
 {
-	point pt;
+	std::stringstream s;
+	s << *this;
+	return s.str();
+}
+
+bool operator!=( const stl_point &p, const stl_point &p2 ) {
+	return (p.x!=p2.x || p.y!=p2.y || p.z!=p2.z);
+}
+
+bool operator<( const stl_point &p, const stl_point &p2 ) {
+	return (p.tostr() < p2.tostr());
+}
+
+stl_point cgal_point_to_stl_point( const CGAL_Point_3 &p )
+{
+	stl_point pt;
 	pt.x = boost::lexical_cast<std::string>( CGAL::to_double( p.x() ) );
 	pt.y = boost::lexical_cast<std::string>( CGAL::to_double( p.y() ) );
 	pt.z = boost::lexical_cast<std::string>( CGAL::to_double( p.z() ) );
 	return pt;
 }
 
-std::vector<triangle> get_nef_poly_triangles( CGAL_Nef_polyhedron &N )
+std::vector<stl_triangle> get_cgal_poly_triangles( CGAL_Nef_polyhedron &N )
 {
-	std::vector<triangle> triangles;
+	std::vector<stl_triangle> triangles;
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 	try {
 	CGAL_Polyhedron P;
@@ -90,10 +104,10 @@ std::vector<triangle> get_nef_poly_triangles( CGAL_Nef_polyhedron &N )
 			CGAL_Point_3 p1 = v1.point();
 			CGAL_Point_3 p2 = v2.point();
 			CGAL_Point_3 p3 = v3.point();
-			triangle tri;
-			tri.p1 = cgal_point_to_pt( p1 );
-			tri.p2 = cgal_point_to_pt( p2 );
-			tri.p3 = cgal_point_to_pt( p3 );
+			stl_triangle tri;
+			tri.p1 = cgal_point_to_stl_point( p1 );
+			tri.p2 = cgal_point_to_stl_point( p2 );
+			tri.p3 = cgal_point_to_stl_point( p3 );
 			tri.normal.x = "1";
 			tri.normal.y = "0";
 			tri.normal.z = "0";
@@ -134,8 +148,8 @@ std::vector<triangle> get_nef_poly_triangles( CGAL_Nef_polyhedron &N )
 void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 {
 	output << "solid OpenSCAD_Model\n";
-	std::vector<triangle> triangles = get_nef_poly_triangles( *root_N );
-	BOOST_FOREACH( triangle &t, triangles) {
+	std::vector<stl_triangle> triangles = get_cgal_poly_triangles( *root_N );
+	BOOST_FOREACH( stl_triangle &t, triangles) {
 		output
       << "\n facet normal " << t.normal.x << " " << t.normal.y << " " << t.normal.z
 			<< "\n    outer loop"
@@ -149,47 +163,76 @@ void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 	output << "endsolid OpenSCAD_Model\n";
 }
 
+// save volumes
+void export_amf_volumes(CGAL_Nef_polyhedron *root_N, std::ostream &output,
+     std::vector<stl_triangle> &triangles,
+     std::map<stl_point,int> vertexmap1)
+{
+	CGAL_Nef_polyhedron3::Volume_const_iterator c;
+	CGAL_Nef_polyhedron3 N = *(root_N->p3);
+  CGAL_forall_volumes(c,N) {
+    if ((*c).mark()) { // only use inner volumes not outer volumes
+	    output << " <!--Processing volume...-->\n";
+      CGAL_Polyhedron P;
+      N.convert_inner_shell_to_polyhedron(c->shells_begin(), P);
+	    output << " <!--Processing volume end-->\n";
+		}
+  }
+  output << " <volume>\n";
+  BOOST_FOREACH(stl_triangle &t, triangles) {
+  	output << "  <triangle>\n"
+	 	       << "   <v1>" << vertexmap1[ t.p1 ] << "</v1>\n"
+	         << "   <v2>" << vertexmap1[ t.p2 ] << "</v2>\n"
+	         << "   <v3>" << vertexmap1[ t.p3 ] << "</v3>\n"
+	         << "  </triangle>\n";
+  }
+  output << " </volume>\n";
+}
+
 /*!
 Saves the current 3D CGAL Nef polyhedron as AMF to the given file.
 The file must be open.
 */
 void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 {
-	std::vector<triangle> triangles = get_nef_poly_triangles( *root_N );
+	std::vector<stl_triangle> triangles = get_cgal_poly_triangles( *root_N );
 
-	// create vertex list, dont include duplicates
-	std::map<point*,int> indexmap;
-	std::map<point> vertexes;
-	BOOST_FOREACH( triangle &t, triangles ) {
-		vertexes.insert( t.p1 );
-		vertexes.insert( t.p2 );
-		vertexes.insert( t.p3 );
+	std::map<stl_point,int> vertexmap1;
+	std::map<int,stl_point> vertexmap2;
+	int i = 0;
+	BOOST_FOREACH( stl_triangle &t, triangles ) {
+		if (! vertexmap1.count( t.p1 )) {
+			vertexmap1[t.p1] = i;
+			vertexmap2[i] = t.p1;
+			i++;
+		}
+		if (! vertexmap1.count( t.p2 )) {
+			vertexmap1[t.p2] = i;
+			vertexmap2[i] = t.p2;
+			i++;
+		}
+		if (! vertexmap1.count( t.p3 )) {
+			vertexmap1[t.p3] = i;
+			vertexmap2[i] = t.p3;
+			i++;
+		}
 	}
-	
 
 	output << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
          << "<amf unit=\"millimeter\">\n"
          << " <object id=\"0\">\n"
          << " <mesh>\n";
   output << " <vertices>\n";
-	std::set<point>::iterator vi;
-	for ( vi = vertexes.begin(); vi != vertexes.end(); ++vi ){
- 		output << " <vertex><coordinates>\n"
-           << " <x>" << vi->x << "</x>\n"
-           << " <y>" << vi->y << "</y>\n"
-           << " <z>" << vi->z << "</z>\n"
-           << " </coordinates></vertex>\n";
+	std::map<int,stl_point>::const_iterator vi;
+	for ( vi = vertexmap2.begin(); vi != vertexmap2.end(); ++vi ){
+ 		output << "  <vertex><coordinates>\n"
+           << "   <x>" << vi->second.x << "</x>\n"
+           << "   <y>" << vi->second.y << "</y>\n"
+           << "   <z>" << vi->second.z << "</z>\n"
+           << "  </coordinates></vertex>\n";
   }
-  output << " </vertices>\n";
-  output << " <volume>\n";
-  BOOST_FOREACH(triangle &t, triangles) {
-  	output << " <triangle>\n"
-	 	       << " <v1>" << indexmap[ &(t.p1) ] << "</v1>\n"
-	         << " <v2>" << indexmap[ &(t.p2) ] << "</v2>\n"
-	         << " <v3>" << indexmap[ &(t.p3) ] << "</v3>\n"
-	         << " </triangle>\n";
-  }
-  output << " </volume>\n";
+  output << " </vertices>\n\n";
+	export_amf_volumes( root_N, output, triangles, vertexmap1 );
   output << " </mesh>\n"
          << " </object>\n"
          << "</amf>\n";

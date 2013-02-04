@@ -168,6 +168,7 @@ std::string dump_svg( const CGAL_Nef_polyhedron2 &N )
 class NefPoly3_dumper_svg {
 public:
 	std::stringstream out;
+	bool current_volume_mark;
 	CGAL_Iso_cuboid_3 bbox;
 	NefPoly3_dumper_svg(const CGAL_Nef_polyhedron3& N)
 	{
@@ -182,8 +183,9 @@ public:
 	{
 		int contour_count = 0;
 		out << "  <!-- Halffacet. Mark: " << (*hfacet).mark() << " -->\n";
-		std::string color = "gold";
-		if (!(*hfacet).mark()) color = "green";
+		std::string style = "stroke:gold";
+		if (!(*hfacet).mark()) style = "stroke:green";
+		if (current_volume_mark==0) style = "stroke:blue;stroke-dasharray:8,5;stroke-width:2";
 		CGAL_Nef_polyhedron3::Halffacet_cycle_const_iterator i;
 		CGAL_forall_facet_cycles_of( i, hfacet ) {
 			CGAL_Nef_polyhedron3::SHalfloop_const_handle shl_handle;
@@ -206,7 +208,7 @@ public:
 					<< "y1='" << CGAL::to_double(tp1.y()) << "' "
 					<< "x2='" << CGAL::to_double(tp2.x()) << "' "
 					<< "y2='" << CGAL::to_double(tp2.y()) << "' "
-				  << " stroke='" << color << "'";
+				  << "style='" << style << "'";
 				if (!(*hfacet).mark()) out << " stroke-dasharray='4 4' />\n";
 				else out << " />\n";
 			}
@@ -231,6 +233,7 @@ std::string dump_svg( const CGAL_Nef_polyhedron3 &N )
     CGAL_forall_shells_of(it,c) {
       out << "  <!--Processing shell...-->\n";
       NefPoly3_dumper_svg dumper_svg(N);
+			dumper_svg.current_volume_mark = (*c).mark();
       N.visit_shell_objects(CGAL_Nef_polyhedron3::SFace_const_handle(it), dumper_svg );
 			out << dumper_svg.out.str();
       out << "  <!--Processing shell end-->\n";

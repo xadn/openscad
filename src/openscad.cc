@@ -239,12 +239,14 @@ int main(int argc, char **argv)
 	if (output_file)
 	{
 		const char *stl_output_file = NULL;
+		const char *amf_output_file = NULL;
 		const char *off_output_file = NULL;
 		const char *dxf_output_file = NULL;
 		const char *csg_output_file = NULL;
 
 		QString suffix = QFileInfo(output_file).suffix().toLower();
 		if (suffix == "stl") stl_output_file = output_file;
+		else if (suffix == "amf") amf_output_file = output_file;
 		else if (suffix == "off") off_output_file = output_file;
 		else if (suffix == "dxf") dxf_output_file = output_file;
 		else if (suffix == "csg") csg_output_file = output_file;
@@ -336,6 +338,25 @@ int main(int argc, char **argv)
 				}
 				else {
 					export_stl(&root_N, fstream);
+					fstream.close();
+				}
+			}
+			
+			if (amf_output_file) {
+				if (root_N.dim != 3) {
+					fprintf(stderr, "Current top level object is not a 3D object.\n");
+					exit(1);
+				}
+				if (!root_N.p3->is_simple()) {
+					fprintf(stderr, "Object isn't a valid 2-manifold! Modify your design.\n");
+					exit(1);
+				}
+				std::ofstream fstream(amf_output_file);
+				if (!fstream.is_open()) {
+					PRINTB("Can't open file \"%s\" for export", amf_output_file);
+				}
+				else {
+					export_amf(&root_N, fstream);
 					fstream.close();
 				}
 			}
