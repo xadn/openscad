@@ -1,3 +1,4 @@
+#ifdef ENABLE_CGAL
 #include "cgalutils.h"
 #include "svg.h"
 #include <boost/algorithm/string.hpp>
@@ -249,4 +250,4 @@ std::string dump_svg( const CGAL_Nef_polyhedron3 &N )
 
 } // namespace
 
-
+#endif // ENABLE_CGAL

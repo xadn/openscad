@@ -34,6 +34,11 @@ setenv_common()
  echo OPENSCAD_LIBRARIES modified
  echo GLEWDIR modified
 
+ if [ "`uname -m | grep sparc64`" ]; then
+   echo detected sparc64. forcing 32 bit with export ABI=32
+   ABI=32
+   export ABI
+ fi
 }
 
 setenv_freebsd()
@@ -128,6 +133,13 @@ fi
 
 if [ "`echo $* | grep qt5`" ]; then
  setenv_qt5
+fi
+
+if [ -e $DEPLOYDIR/include/Qt ]; then
+  echo "Qt found under $DEPLOYDIR ... "
+  QTDIR=$DEPLOYDIR
+  export QTDIR
+  echo "QTDIR modified to $DEPLOYDIR"
 fi
 
 clean_note

@@ -26,11 +26,16 @@
 
 #include "Preferences.h"
 
+#include <QMessageBox>
 #include <QFontDatabase>
 #include <QKeyEvent>
 #include <QSettings>
+#include <QStatusBar>
 #include "PolySetCache.h"
+#include "AutoUpdater.h"
+#ifdef ENABLE_CGAL
 #include "CGALCache.h"
+#endif
 
 Preferences *Preferences::instance = NULL;
 
@@ -75,8 +80,10 @@ Preferences::Preferences(QWidget *parent) : QMainWindow(parent)
 	this->defaultmap["advanced/opencsg_show_warning"] = true;
 	this->defaultmap["advanced/enable_opencsg_opengl1x"] = true;
 	this->defaultmap["advanced/polysetCacheSize"] = uint(PolySetCache::instance()->maxSize());
+#ifdef ENABLE_CGAL
 	this->defaultmap["advanced/cgalCacheSize"] = uint(CGALCache::instance()->maxSize());
-	this->defaultmap["advanced/openCSGLimit"] = 2000;
+#endif
+	this->defaultmap["advanced/openCSGLimit"] = RenderSettings::inst()->openCSGTermLimit;
 	this->defaultmap["advanced/forceGoldfeather"] = false;
 
 
@@ -84,6 +91,7 @@ Preferences::Preferences(QWidget *parent) : QMainWindow(parent)
 	QActionGroup *group = new QActionGroup(this);
 	group->addAction(prefsAction3DView);
 	group->addAction(prefsActionEditor);
+	group->addAction(prefsActionUpdate);
 	group->addAction(prefsActionAdvanced);
 	connect(group, SIGNAL(triggered(QAction*)), this, SLOT(actionTriggered(QAction*)));
 
@@ -126,7 +134,9 @@ Preferences::Preferences(QWidget *parent) : QMainWindow(parent)
 
   // Advanced pane	
 	QValidator *validator = new QIntValidator(this);
+#ifdef ENABLE_CGAL
 	this->cgalCacheSizeEdit->setValidator(validator);
+#endif
 	this->polysetCacheSizeEdit->setValidator(validator);
 	this->opencsgLimitEdit->setValidator(validator);
 
@@ -148,6 +158,9 @@ Preferences::actionTriggered(QAction *action)
 	}
 	else if (action == this->prefsActionEditor) {
 		this->stackedWidget->setCurrentWidget(this->pageEditor);
+	}
+	else if (action == this->prefsActionUpdate) {
+		this->stackedWidget->setCurrentWidget(this->pageUpdate);
 	}
 	else if (action == this->prefsActionAdvanced) {
 		this->stackedWidget->setCurrentWidget(this->pageAdvanced);
@@ -180,6 +193,40 @@ void Preferences::on_fontSize_editTextChanged(const QString &size)
 	emit fontChanged(getValue("editor/fontfamily").toString(), intsize);
 }
 
+void unimplemented_msg()
+{
+  QMessageBox mbox;
+	mbox.setText("Sorry, this feature is not implemented on your Operating System");
+	mbox.exec();
+}
+
+void Preferences::on_updateCheckBox_toggled(bool on)
+{
+	if (AutoUpdater *updater =AutoUpdater::updater()) {
+		updater->setAutomaticallyChecksForUpdates(on);
+	} else {
+		unimplemented_msg();
+	}
+}
+
+void Preferences::on_snapshotCheckBox_toggled(bool on)
+{
+	if (AutoUpdater *updater =AutoUpdater::updater()) {
+		updater->setEnableSnapshots(on);
+	} else {
+		unimplemented_msg();
+	}
+}
+
+void Preferences::on_checkNowButton_clicked()
+{
+	if (AutoUpdater *updater =AutoUpdater::updater()) {
+		updater->checkForUpdates();
+	} else {
+		unimplemented_msg();
+	}
+}
+
 void
 Preferences::on_openCSGWarningBox_toggled(bool state)
 {
@@ -198,7 +245,9 @@ void Preferences::on_cgalCacheSizeEdit_textChanged(const QString &text)
 {
 	QSettings settings;
 	settings.setValue("advanced/cgalCacheSize", text);
+#ifdef ENABLE_CGAL
 	CGALCache::instance()->setMaxSize(text.toULong());
+#endif
 }
 
 void Preferences::on_polysetCacheSizeEdit_textChanged(const QString &text)
@@ -279,6 +328,12 @@ void Preferences::updateGUI()
 	}
 	else {
 		this->fontSize->setEditText(fontsize);
+	}
+
+	if (AutoUpdater *updater = AutoUpdater::updater()) {
+		this->updateCheckBox->setChecked(updater->automaticallyChecksForUpdates());
+		this->snapshotCheckBox->setChecked(updater->enableSnapshots());
+		this->lastCheckedLabel->setText(updater->lastUpdateCheckDate());
 	}
 
 	this->openCSGWarningBox->setChecked(getValue("advanced/opencsg_show_warning").toBool());

@@ -80,6 +80,12 @@ stl_point cgal_point_to_stl_point( const CGAL_Point_3 &p )
 std::vector<stl_triangle> get_cgal_poly_triangles( CGAL_Polyhedron &P )
 {
 	std::vector<stl_triangle> triangles;
+/*
+	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
+	try {
+	CGAL_Polyhedron P;
+	root_N->p3->convert_to_Polyhedron(P);
+*/
 
 	typedef CGAL_Polyhedron::Vertex                                 Vertex;
 	typedef CGAL_Polyhedron::Vertex_const_iterator                  VCI;
@@ -132,13 +138,13 @@ std::vector<stl_triangle> get_cgal_poly_triangles( CGAL_Polyhedron &P )
 	return triangles;
 }
 
-std::vector<stl_triangle> get_cgal_nef_poly_triangles( CGAL_Nef_polyhedron &N )
+std::vector<stl_triangle> get_cgal_nef_poly_triangles( CGAL_Nef_polyhedron3 p3 )
 {
 	std::vector<stl_triangle> triangles;
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 	try {
 		CGAL_Polyhedron P;
-	  N.p3->convert_to_Polyhedron(P);
+	  p3.convert_to_Polyhedron(P);
 		triangles = get_cgal_poly_triangles( P );
 	}
 	catch (CGAL::Assertion_exception e) {
@@ -156,7 +162,8 @@ std::vector<stl_triangle> get_cgal_nef_poly_triangles( CGAL_Nef_polyhedron &N )
 void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 {
 	output << "solid OpenSCAD_Model\n";
-	std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( *root_N );
+	assert( root_N );
+	std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( *(root_N->p3) );
 	BOOST_FOREACH( stl_triangle &t, triangles) {
 		output
       << "\n facet normal " << t.normal.x << " " << t.normal.y << " " << t.normal.z
@@ -171,18 +178,35 @@ void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 	output << "endsolid OpenSCAD_Model\n";
 }
 
-// save volumes
+/*!
+	Saves the current 3D CGAL Nef polyhedron volumes to the given file.
+  Called from export_amf. The file must be open.
+	CGAL Nef polyhedra Volumes are converted to AMF volumes.
+ */
 void export_amf_volumes(CGAL_Nef_polyhedron *root_N, std::ostream &output,
      std::map<stl_point,int> &vertexmap1)
 {
+	// Volumes only work if we regularize the polyhedron first. See
+	// https://github.com/noelwarr/rgal/blob/master/cpp/rb_Nef_polyhedron_3.cpp
 	CGAL_Nef_polyhedron3::Volume_const_iterator c;
 	CGAL_Nef_polyhedron3 N = *(root_N->p3);
-  CGAL_forall_volumes(c,N) {
+	CGAL_Nef_polyhedron3 R = N.regularization();
+  CGAL_forall_volumes(c,R) {
     if ((*c).mark()) { // only use inner volumes not outer volumes
 		  output << " <volume>\n";
       CGAL_Polyhedron P;
-      N.convert_inner_shell_to_polyhedron(c->shells_begin(), P);
-			std::vector<stl_triangle> triangles = get_cgal_poly_triangles( P );
+// buggy
+//      R.convert_inner_shell_to_polyhedron(c->shells_begin(), P);
+//CGAL::Polyhedron_incremental_builder_3<HDS>::
+//lookup_halfedge(): input error: facet 38 shares a halfedge from vertex 269 to vertex 268 with facet 33.
+//CGAL error: assertion violation!
+
+CGAL_Nef_polyhedron3::Shell_entry_const_iterator si;
+CGAL_forall_shells_of(si, c) {
+CGAL_Nef_polyhedron3::SFace_const_handle sfch(si);
+CGAL_Nef_polyhedron3 O(R,sfch);
+
+			std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( O );
 		  BOOST_FOREACH(stl_triangle &t, triangles) {
 	  		output << "  <triangle>\n"
 	 	           << "   <v1>" << vertexmap1[ t.p1 ] << "</v1>\n"
@@ -190,8 +214,11 @@ void export_amf_volumes(CGAL_Nef_polyhedron *root_N, std::ostream &output,
 	             << "   <v3>" << vertexmap1[ t.p3 ] << "</v3>\n"
 	             << "  </triangle>\n";
 		  }
-		  output << " </volume>\n";
-		}
+		  output << " </volume>\n\n";
+
+}
+
+		} //mark
   }
 }
 
@@ -201,7 +228,8 @@ The file must be open.
 */
 void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 {
-	std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( *root_N );
+	// based on code originally by LogXen
+	std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( *(root_N->p3) );
 
 	std::map<stl_point,int> vertexmap1;
 	std::map<int,stl_point> vertexmap2;
@@ -322,7 +350,7 @@ void export_dxf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 	setlocale(LC_NUMERIC, "");      // Set default locale
 }
 
-#endif
+#endif // ENABLE_CGAL
 
 #ifdef DEBUG
 void export_stl(const PolySet &ps, std::ostream &output)

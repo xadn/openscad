@@ -1,5 +1,7 @@
 # __header__
 #
+# Template to build a CTestCustom.cmake file in the build directory.
+#
 # This template enables ctest to do things before and after the test runs.
 # In our case, 1. Setup a virtual framebuffer, 2. pretty-print results
 # 
@@ -7,25 +9,22 @@
 # words (__word__) are replaced with the cmake build dir/etc, at the time that
 # cmake itself is run. Typically these are signified by two underscores (__)
 # before and after the word in smallcase. 
-#
-# The file then becomes CTestCustom.cmake inside the cmake build 
-# directory. It is 'run' at the time that ctest is run. 
 
-
-# Part 0. X11 and Virtual Framebuffer, for Linux/BSD. This is not used by
-#  Windows or Mac because they have alternate means of accessing OpenGL. 
+# Part 0. X11 and Virtual Framebuffer, for headless Linux/BSD systems. 
+# This is not used by Windows or Mac because they have alternate means 
+# of accessing OpenGL.
 
 set(debug_openscad_template 0)
 
 if( __cmake_system_name__ MATCHES "Linux|BSD")
  set(DISPLAY_ENV $ENV{DISPLAY})
  if(DISPLAY_ENV)
-  message("X11 DISPLAY environment variable found. Assuming framebuffer exists at DISPLAY=${DISPLAY_ENV}")
+  message("X11 DISPLAY environment variable found.")
+  message("Assuming framebuffer exists at DISPLAY=${DISPLAY_ENV}")
  else()
   message("X11 DISPLAY environment variable not found. Calling virtualfb.sh")
   execute_process(
-   COMMAND __cmake_current_source_dir__/virtualfb.sh start
-   OUTPUT_VARIABLE SVFB_OUT)
+   COMMAND __cmake_current_source_dir__/virtualfb.sh OUTPUT_VARIABLE SVFB_OUT)
   string(REGEX MATCH "DISPLAY=:[0-9.]*" VFB_DISPLAY_STR "${SVFB_OUT}")
   string(REGEX MATCH ":[0-9.]*" VFB_DISPLAY "${VFB_DISPLAY_STR}")
   string(REGEX MATCH "PID=[0-9.]*" VFB_PID_STR "${SVFB_OUT}")
@@ -37,8 +36,10 @@ if( __cmake_system_name__ MATCHES "Linux|BSD")
     message("Process ID of vfb: ${VFB_PID}")
   endif()
   if ("${VFB_DISPLAY}" STREQUAL "" OR "${VFB_PID}" STREQUAL "")
-    message("Virtual framebuffer had a problem starting.")
-    execute_process("cat virtualfblog")
+    set(VFBLOG "virtualfb.log")
+    message("Virtual framebuffer had a problem starting. Printing ${VFBLOG}")
+    execute_process(COMMAND cat virtualfb.log OUTPUT_VARIABLE VFBLOGTXT)
+    message("Log: ${VFBLOGTXT}")
   else()
     message("Virtual framebuffer started. DISPLAY=${VFB_DISPLAY}, PID=${VFB_PID}")
   endif()
@@ -50,7 +51,7 @@ if( __cmake_system_name__ MATCHES "Linux|BSD")
   # in the build directory).
   set(ENV{DISPLAY} "${VFB_DISPLAY}")
 
-  set(CTEST_CUSTOM_POST_TEST "kill ${VFB_PID}")
+  set(CTEST_CUSTOM_POST_TEST "__cmake_current_source_dir__/virtualfb.sh")
  endif()
 endif()
 
@@ -59,7 +60,7 @@ endif()
 
 message("running 'opencsgtest --info' to generate sysinfo.txt")
 execute_process(COMMAND __wine__ __cmake_current_binary_dir__/opencsgtest --info OUTPUT_FILE sysinfo.txt)
-set(CTEST_CUSTOM_POST_TEST ${CTEST_CUSTOM_POST_TEST} "__python__ __cmake_current_source_dir__/test_pretty_print.py --builddir=__cmake_current_binary_dir__")
+set(CTEST_CUSTOM_POST_TEST ${CTEST_CUSTOM_POST_TEST} "__cmake_current_binary_dir__/test_pretty_print")
 
 if ( ${debug_openscad_template} )
   foreach(post_test ${CTEST_CUSTOM_POST_TEST} )
