@@ -186,6 +186,13 @@ CGAL_Nef_polyhedron CGALEvaluator::applyHull(const CgaladvNode &node)
 CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 {
 	CGAL_Nef_polyhedron nef = applyToChildren(node, CGE_UNION);
+	if ( nef.isNull() || nef.isEmpty() ) return nef;
+	if ( nef.dim==2 ) {
+		PRINT("WARNING: Polyhedron subdivision on 2d objects is not implemented");
+		return nef;
+	}
+	if ( node.subdiv_level == 0 ) return nef;
+
 	CGAL_Polyhedron ph;
 	nef.p3->convert_to_Polyhedron( ph );
 
@@ -193,9 +200,9 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 		CatmullClark_subdivision( ph, node.subdiv_level );
 	else if (node.subdiv_type==SUBDIV_LOOP)
 		Loop_subdivision( ph, node.subdiv_level );
-// doo sabin broken on some compilers / kernels (gcc 4.4)
-//	else if (node.subdiv_type=="doosabin")
-//		DooSabin_subdivision( ph, node.subdiv_level );
+	else if (node.subdiv_type==SUBDIV_DOO_SABIN)
+		PRINT("WARNING: Doo Sabin not implemented");
+//	DooSabin_subdivision( ph, node.subdiv_level );
 	else if (node.subdiv_type==SUBDIV_SQRT3)
 		Sqrt3_subdivision( ph, node.subdiv_level );
 

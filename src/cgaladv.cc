@@ -79,13 +79,23 @@ AbstractNode *CgaladvModule::evaluate(const Context *ctx, const ModuleInstantiat
 
 	if (type == SUBDIV) {
 		Value subdiv_level = c.lookup_variable("level", true);
-		node->subdiv_level = (int)subdiv_level.toDouble();
-		if (node->subdiv_level <= 1) {
-			PRINT("WARNING: Subdivision cannot be less than 1. Setting to 1.");
-			node->subdiv_level = 1;
-		}
 		Value subdiv_typeval = c.lookup_variable("type", false);
-		std::string subdiv_type = subdiv_typeval.toString();
+
+		// enable subdiv("loop",1) or subdiv(1,"loop")
+		if ( subdiv_level.type() == Value::STRING )
+			if ( subdiv_typeval.type() == Value::NUMBER )
+				std::swap( subdiv_level, subdiv_typeval );
+
+
+		if (subdiv_level.isUndefined())	node->subdiv_level = 1;
+		else node->subdiv_level = (int)subdiv_level.toDouble();
+		if (node->subdiv_level < 0) {
+			PRINT("WARNING: Subdivision cannot be less than 0. Setting to 0.");
+			node->subdiv_level = 0;
+		}
+
+		std::string subdiv_type = "catmullclark";
+		if (!subdiv_typeval.isUndefined()) subdiv_type = subdiv_typeval.toString();
 		boost::algorithm::to_lower( subdiv_type );
 		if ( subdiv_type == "catmullclark" || subdiv_type == "catmull clark" )
 			node->subdiv_type = SUBDIV_CATMULL_CLARK;
@@ -100,6 +110,7 @@ AbstractNode *CgaladvModule::evaluate(const Context *ctx, const ModuleInstantiat
 			PRINT("WARNING: setting to CatmullClark");
 			node->subdiv_type = SUBDIV_CATMULL_CLARK;
 		}
+
 		convexity = c.lookup_variable("convexity", true);
 	}
 
