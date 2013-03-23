@@ -32,6 +32,8 @@
 #include <sstream>
 #include <assert.h>
 #include <boost/assign/std/vector.hpp>
+#include <boost/algorithm/string.hpp>
+#include "printutils.h"
 using namespace boost::assign; // bring 'operator+=()' into scope
 
 class CgaladvModule : public AbstractModule
@@ -56,7 +58,7 @@ AbstractNode *CgaladvModule::evaluate(const Context *ctx, const ModuleInstantiat
 		argnames += "path", "convexity";
 
 	if (type == SUBDIV)
-		argnames += "type", "level", "convexity";
+		argnames += "level", "type", "convexity";
 
 	if (type == RESIZE)
 		argnames += "newsize", "auto";
@@ -64,7 +66,7 @@ AbstractNode *CgaladvModule::evaluate(const Context *ctx, const ModuleInstantiat
 	Context c(ctx);
 	c.args(argnames, argexpr, inst->argnames, inst->argvalues);
 
-	Value convexity, path, subdiv_type, level;
+	Value convexity, path;
 
 	if (type == MINKOWSKI) {
 		convexity = c.lookup_variable("convexity", true);
@@ -76,9 +78,29 @@ AbstractNode *CgaladvModule::evaluate(const Context *ctx, const ModuleInstantiat
 	}
 
 	if (type == SUBDIV) {
+		Value subdiv_level = c.lookup_variable("level", true);
+		node->subdiv_level = (int)subdiv_level.toDouble();
+		if (node->subdiv_level <= 1) {
+			PRINT("WARNING: Subdivision cannot be less than 1. Setting to 1.");
+			node->subdiv_level = 1;
+		}
+		Value subdiv_typeval = c.lookup_variable("type", false);
+		std::string subdiv_type = subdiv_typeval.toString();
+		boost::algorithm::to_lower( subdiv_type );
+		if ( subdiv_type == "catmullclark" || subdiv_type == "catmull clark" )
+			node->subdiv_type = SUBDIV_CATMULL_CLARK;
+		else if ( subdiv_type == "loop" )
+			node->subdiv_type = SUBDIV_LOOP;
+		else if ( subdiv_type == "doosabin" || subdiv_type == "doo sabin" )
+			node->subdiv_type = SUBDIV_DOO_SABIN;
+		else if ( subdiv_type == "sqrt3" || subdiv_type == "sqrt 3" )
+			node->subdiv_type = SUBDIV_SQRT3;
+		else {
+			PRINTB("WARNING: unknown subdivision type %s",subdiv_type);
+			PRINT("WARNING: setting to CatmullClark");
+			node->subdiv_type = SUBDIV_CATMULL_CLARK;
+		}
 		convexity = c.lookup_variable("convexity", true);
-		subdiv_type = c.lookup_variable("type", false);
-		level = c.lookup_variable("level", true);
 	}
 
 	if (type == RESIZE) {
@@ -105,11 +127,6 @@ AbstractNode *CgaladvModule::evaluate(const Context *ctx, const ModuleInstantiat
 
 	node->convexity = (int)convexity.toDouble();
 	node->path = path;
-	node->subdiv_type = subdiv_type.toString();
-	node->level = (int)level.toDouble();
-
-	if (node->level <= 1)
-		node->level = 1;
 
 	std::vector<AbstractNode *> evaluatednodes = inst->evaluateChildren();
 	node->children.insert(node->children.end(), evaluatednodes.begin(), evaluatednodes.end());
@@ -158,7 +175,7 @@ std::string CgaladvNode::toString() const
 		stream << "(path = " << this->path << ", convexity = " << this->convexity << ")";
 		break;
 	case SUBDIV:
-		stream << "(level = " << this->level << ", convexity = " << this->convexity << ")";
+		stream << "(type = " << this->subdiv_type << ", level = " << this->subdiv_level << ", convexity = " << this->convexity << ")";
 		break;
 	case HULL:
 		stream << "()";

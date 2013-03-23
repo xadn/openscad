@@ -5,6 +5,8 @@
 #include "visitor.h"
 #include "value.h"
 #include "linalg.h"
+#include <set>
+#include <string>
 
 enum cgaladv_type_e {
 	MINKOWSKI,
@@ -12,6 +14,13 @@ enum cgaladv_type_e {
 	SUBDIV,
 	HULL,
 	RESIZE
+};
+
+enum cgaladv_subdiv_type_e {
+	SUBDIV_CATMULL_CLARK,
+	SUBDIV_LOOP,
+	SUBDIV_DOO_SABIN,
+	SUBDIV_SQRT3
 };
 
 class CgaladvNode : public AbstractNode
@@ -29,8 +38,8 @@ public:
 	PolySet *evaluate_polyset(class PolySetEvaluator *ps) const;
 
 	Value path;
-	std::string subdiv_type;
-	int convexity, level;
+	cgaladv_subdiv_type_e subdiv_type;
+	int convexity, subdiv_level;
 	Vector3d newsize;
 	Eigen::Matrix<bool,3,1> autosize;
 	cgaladv_type_e type;

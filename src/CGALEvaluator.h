@@ -35,6 +35,7 @@ private:
 	CGAL_Nef_polyhedron applyToChildren(const AbstractNode &node, CGALEvaluator::CsgOp op);
 	CGAL_Nef_polyhedron applyHull(const CgaladvNode &node);
 	CGAL_Nef_polyhedron applyResize(const CgaladvNode &node);
+	CGAL_Nef_polyhedron applySubdiv(const CgaladvNode &node);
 
 	std::string currindent;
   typedef std::pair<const AbstractNode *, CGAL_Nef_polyhedron> ChildItem;

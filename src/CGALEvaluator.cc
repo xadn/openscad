@@ -21,7 +21,9 @@
 #define PREV_NDEBUG NDEBUG
 #undef NDEBUG
 #endif
+#include <CGAL/IO/Polyhedron_iostream.h>
 #include <CGAL/convex_hull_3.h>
+#include <CGAL/Subdivision_method_3.h>
 #ifdef PREV_NDEBUG
 #define NDEBUG PREV_NDEBUG
 #endif
@@ -36,6 +38,8 @@
 #include <boost/foreach.hpp>
 #include <boost/bind.hpp>
 #include <map>
+
+using namespace CGAL::Subdivision_method_3;
 
 CGAL_Nef_polyhedron CGALEvaluator::evaluateCGALMesh(const AbstractNode &node)
 {
@@ -177,6 +181,38 @@ CGAL_Nef_polyhedron CGALEvaluator::applyHull(const CgaladvNode &node)
 		N = CGAL_Nef_polyhedron(new CGAL_Nef_polyhedron3(P));
 	}
 	return N;
+}
+
+CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
+{
+	CGAL_Nef_polyhedron nef = applyToChildren(node, CGE_UNION);
+	CGAL_Polyhedron ph;
+	nef.p3->convert_to_Polyhedron( ph );
+
+	if (node.subdiv_type==SUBDIV_CATMULL_CLARK)
+		CatmullClark_subdivision( ph, node.subdiv_level );
+	else if (node.subdiv_type==SUBDIV_LOOP)
+		Loop_subdivision( ph, node.subdiv_level );
+// doo sabin broken on some compilers / kernels (gcc 4.4)
+//	else if (node.subdiv_type=="doosabin")
+//		DooSabin_subdivision( ph, node.subdiv_level );
+	else if (node.subdiv_type==SUBDIV_SQRT3)
+		Sqrt3_subdivision( ph, node.subdiv_level );
+
+	// Convert the Polyhedron to a PolySet and back again.
+	// This prevents assertions in CGAL/Nef_3/polyhedron_3_to_nef_3.h
+	PolySet *ps = createPolySetFromPolyhedron( ph );
+	if (ps) {
+		CGAL_Polyhedron *phnew = createPolyhedronFromPolySet( *ps );
+		delete ps;
+		if (phnew) {
+			nef.reset();
+			nef = CGAL_Nef_polyhedron( new CGAL_Nef_polyhedron3( *phnew ) );
+			delete phnew;
+		}
+	}
+
+	return nef;
 }
 
 CGAL_Nef_polyhedron CGALEvaluator::applyResize(const CgaladvNode &node)
@@ -360,8 +396,7 @@ Response CGALEvaluator::visit(State &state, const CgaladvNode &node)
 				return PruneTraversal;
 				break;
 			case SUBDIV:
-				PRINT("WARNING: subdiv() is not implemented yet!");
-				return PruneTraversal;
+				N = applySubdiv(node);
 				break;
 			case HULL:
 				N = applyHull(node);
