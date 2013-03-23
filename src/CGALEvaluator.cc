@@ -202,7 +202,8 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 		Loop_subdivision( ph, node.subdiv_level );
 	else if (node.subdiv_type==SUBDIV_DOO_SABIN)
 		PRINT("WARNING: Doo Sabin not implemented");
-//	DooSabin_subdivision( ph, node.subdiv_level );
+// compiler errors... might be boost version related?
+//		DooSabin_subdivision( ph, node.subdiv_level );
 	else if (node.subdiv_type==SUBDIV_SQRT3)
 		Sqrt3_subdivision( ph, node.subdiv_level );
 
