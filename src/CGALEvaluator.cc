@@ -185,6 +185,53 @@ CGAL_Nef_polyhedron CGALEvaluator::applyHull(const CgaladvNode &node)
 
 CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 {
+	/*
+	the problem:
+	subdivision surfaces come out 'not right', they are not 'symmetrical'. 
+	an example is dowloadin 'aircraft.off' from the 'subdivision surface tutorial'
+	of CGAL. when you compile the simple sample program and pass aircraft.off
+	through it, you get a symmetrically subdivided smoother output.off. 
+	when you pass aircraft.off through openscad's subdivision, it is 'assymetrical',
+	the lines are not smooth, they are sort of random. 
+	another example is subdiv() cylinder(); - you can see the 'star' pattern
+	is off-center in the top face of the cylinder, when it should be dead
+	center. this results in all kinds of weird looking subdivs that are not
+	intuitive and not ideal for modeling.
+
+	the source of the problem:
+	our subdiv() actually works perfectly fine. if you pull in aircraft.off 
+	in the code below right before subdivision, you will get a perfectly
+	subdivided output aircraft. 
+
+	whereas if you import('aircraft.off') in openscad you get an assymetric
+	awful looking subdivision. the problem then, is not in the subdivision,
+	it is rather in the process where Ordinary Polyhedrons are converted
+	to Nef Polyhedrons and back again. Something in that process messes up the
+	original mesh and this, in turn, is what causes the bizarre artefacts in
+	the subdiv().
+
+	the solution to the problem:
+	unknow. further analysis requires the creation of a Polyhedron dumper
+	. then dump the following; 
+	  1. Polyhedron created from input (???? cylinder? .off file?)
+	  2. Nef created from the Polyhedron in step 1
+	  3. Nef fed to applySubdiv(), compare with Nef from step 2
+    4. Polyhedron created by convert_to_polyhedron inside of applySubdiv()
+
+  if we can find where the actual mesh is changing, or how, then maybe
+  we can figure out where to point the possible solution.
+
+	option 1: try refining the mesh of the Polyhedron right after it
+   comes out of Nef polyhedron. see if that helps. this would actually
+   be easier if we just create an entire new command called 'refine()'
+   that will do mesh refinement on child objects. 
+
+  option 2: try to create our own Polyhedron->Nef->Polyhedron code
+   so that it doesnt alter the actual grid of the input polyhedron. 
+   oh my that sounds like a lot of work. 
+  
+	*/
+
 	CGAL_Nef_polyhedron nef = applyToChildren(node, CGE_UNION);
 	if ( nef.isNull() || nef.isEmpty() ) return nef;
 	if ( nef.dim==2 ) {
@@ -201,9 +248,9 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 	else if (node.subdiv_type==SUBDIV_LOOP)
 		Loop_subdivision( ph, node.subdiv_level );
 	else if (node.subdiv_type==SUBDIV_DOO_SABIN)
-		PRINT("WARNING: Doo Sabin not implemented");
-// compiler errors... might be boost version related?
-//		DooSabin_subdivision( ph, node.subdiv_level );
+		PRINT("WARNING: Doo Sabin surface subdivision not implemented");
+// causes compiler errors.
+//	DooSabin_subdivision( ph, node.subdiv_level );
 	else if (node.subdiv_type==SUBDIV_SQRT3)
 		Sqrt3_subdivision( ph, node.subdiv_level );
 

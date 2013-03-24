@@ -4,6 +4,13 @@ holes
 things touching at a point
 rings
 interscections / differences
+
+subdiv("loop") without a level number
+
+pinch things
+
+throw notification if not 2-manifold, link
+
 */
 
 module shape() {
