@@ -218,6 +218,22 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 	  3. Nef fed to applySubdiv(), compare with Nef from step 2
     4. Polyhedron created by convert_to_polyhedron inside of applySubdiv()
 
+	--- update. dumping complete. problem confirmed.
+  if you import('airport.off'), we have 154 vertexes, 161 faces, 313 edges.
+  now inside of applySubdiv(), we have the Nef_Polyhedron.convert_to_polyhedron
+  .. and that generated polyhedron, when dumped to OFF, has 
+  154 vertex, 304 faces, 0 edges. 
+  so we can see here, that the conversion to NEF and back to Polyhedron
+  is, in fact, altering the mesh. 
+	if we look closer, reading about the OFF file format, it turns out that
+  by converting to nef polyhedron and back to polyhedron, we have 
+  created all-triangle meshes, whereas the original aircraft.off file had
+  several different faces other than triangles, like quadrilaterals and
+  even some 5-vertex polygons and one 10-sided polygon. 
+
+  so in the conversion to nef_poly and back to poly, we lose information. 
+
+   
   if we can find where the actual mesh is changing, or how, then maybe
   we can figure out where to point the possible solution.
 
@@ -229,7 +245,8 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
   option 2: try to create our own Polyhedron->Nef->Polyhedron code
    so that it doesnt alter the actual grid of the input polyhedron. 
    oh my that sounds like a lot of work. 
-  
+
+  option 3; do subdivision directly on the nef polyhedron... ???  
 	*/
 
 	CGAL_Nef_polyhedron nef = applyToChildren(node, CGE_UNION);
@@ -241,7 +258,11 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 	if ( node.subdiv_level == 0 ) return nef;
 
 	CGAL_Polyhedron ph;
+	std::cout << nef.dump();
+
 	nef.p3->convert_to_Polyhedron( ph );
+
+	std::cout << "\n---- polyhedron begin --- \n" << ph << "\n---polyhedron end\n";
 
 	if (node.subdiv_type==SUBDIV_CATMULL_CLARK)
 		CatmullClark_subdivision( ph, node.subdiv_level );
