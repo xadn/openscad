@@ -286,32 +286,29 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 	}
 	if ( node.subdiv_level == 0 ) return nef;
 
-	CGAL_Polyhedron *ph;
 	std::cout << nef.dump();
+	CGAL_Polyhedron ph;
+	nef.convertToPolyhedron( ph, true );
 
-	PolySet *ps = nef.convertToPolyset();
-	std::cout << "\n---- polyset begin --- \n" << ps->dump() << "\n---polyset end\n";
-	if ( ps ) ph = createPolyhedronFromPolySet( *ps );
-	delete ps;
+	std::cout << "\n---- polyhedron begin --- \n" << ph << "\n---polyhedron end\n";
 
-	std::cout << "\n---- polyhedron begin --- \n" << *ph << "\n---polyhedron end\n";
+	if (node.subdiv_type==SUBDIV_CATMULL_CLARK)
+		CatmullClark_subdivision( ph, node.subdiv_level );
+	else if (node.subdiv_type==SUBDIV_LOOP)
+		Loop_subdivision( ph, node.subdiv_level );
+	else if (node.subdiv_type==SUBDIV_DOO_SABIN)
+		PRINT("WARNING: Doo Sabin surface subdivision not implemented");
+// causes compiler errors.
+//	DooSabin_subdivision( ph, node.subdiv_level );
+	else if (node.subdiv_type==SUBDIV_SQRT3)
+		Sqrt3_subdivision( ph, node.subdiv_level );
 
-	if ( ph ) {
-		if (node.subdiv_type==SUBDIV_CATMULL_CLARK)
-			CatmullClark_subdivision( *ph, node.subdiv_level );
-		else if (node.subdiv_type==SUBDIV_LOOP)
-			Loop_subdivision( *ph, node.subdiv_level );
-		else if (node.subdiv_type==SUBDIV_DOO_SABIN)
-			PRINT("WARNING: Doo Sabin surface subdivision not implemented");
-	// causes compiler errors.
-	//	DooSabin_subdivision( ph, node.subdiv_level );
-		else if (node.subdiv_type==SUBDIV_SQRT3)
-			Sqrt3_subdivision( *ph, node.subdiv_level );
-	}
-
+	// note - is this necessary with a non-tessellating polyhedron conversion
+	// above?
+	//
 	// Convert the Polyhedron to a PolySet and back again.
 	// This prevents assertions in CGAL/Nef_3/polyhedron_3_to_nef_3.h
-	PolySet *psnew = createPolySetFromPolyhedron( *ph );
+	PolySet *psnew = createPolySetFromPolyhedron( ph );
 	delete ph;
 	if (psnew) {
 		CGAL_Polyhedron *phnew = createPolyhedronFromPolySet( *psnew );

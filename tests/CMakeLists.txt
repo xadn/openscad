@@ -457,6 +457,7 @@ set(CGAL_SOURCES
   ${NOCGAL_SOURCES}
 	  ../src/CSGTermEvaluator.cc 
   ../src/CGAL_Nef_polyhedron.cc 
+  ../src/CGAL_Nef_polyhedron_other.cc 
   ../src/cgalutils.cc 
   ../src/CGALEvaluator.cc
   ../src/CGALCache.cc

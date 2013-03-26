@@ -28,6 +28,8 @@ public:
 	int weight() const;
 	class PolySet *convertToPolyset();
 	class DxfData *convertToDxfData() const;
+	// FIXME ,, change this into two sep functions, the bool is unclear
+	// in calling code
 	void convertToPolyhedron( CGAL_Polyhedron &P, bool tessellate = true ) const;
 	void transform( const Transform3d &matrix );
 	int dim;
