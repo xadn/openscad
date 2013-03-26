@@ -28,6 +28,7 @@ public:
 	int weight() const;
 	class PolySet *convertToPolyset();
 	class DxfData *convertToDxfData() const;
+	void convertToPolyhedron( CGAL_Polyhedron &P, bool tessellate = true ) const;
 	void transform( const Transform3d &matrix );
 	int dim;
 	shared_ptr<CGAL_Nef_polyhedron2> p2;

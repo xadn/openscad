@@ -2,10 +2,12 @@
 #define CGALUTILS_H_
 
 #include <cgalfwd.h>
+#include <cgal.h>
 class PolySet *createPolySetFromPolyhedron(const CGAL_Polyhedron &p);
 CGAL_Polyhedron *createPolyhedronFromPolySet(const class PolySet &ps);
 CGAL_Iso_cuboid_3 bounding_box( const CGAL_Nef_polyhedron3 &N );
 CGAL_Iso_rectangle_2e bounding_box( const CGAL_Nef_polyhedron2 &N );
+
 
 #include "svg.h"
 #include "printutils.h"
@@ -17,9 +19,6 @@ ZRemover
 This class converts one or more Nef3 polyhedra into a Nef2 polyhedron by
 stripping off the 'z' coordinates from the vertices. The resulting Nef2
 poly is accumulated in the 'output_nefpoly2d' member variable.
-
-The 'z' coordinates will either be all 0s, for an xy-plane intersected Nef3,
-or, they will be a mixture of -eps and +eps, for a thin-box intersected Nef3.
 
 Notes on CGAL's Nef Polyhedron2:
 

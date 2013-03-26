@@ -274,6 +274,8 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
     number type. using GMPQ is more accurate than double, important
     in certain crashy algorithms you tend to find in Nef land. 
 
+	the hard part about that is holes. 
+
 	*/
 
 	CGAL_Nef_polyhedron nef = applyToChildren(node, CGE_UNION);

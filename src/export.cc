@@ -32,6 +32,7 @@
 #ifdef ENABLE_CGAL
 #include "CGAL_Nef_polyhedron.h"
 #include "cgal.h"
+#include "cgalutils.h"
 
 /*!
 	Saves the current 3D CGAL Nef polyhedron as STL to the given file.
@@ -122,7 +123,7 @@ void export_off(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 	try {
 		CGAL_Polyhedron P;
-		root_N->p3->convert_to_Polyhedron(P);
+		root_N->convertToPolyhedron( P, true );
 		output << P;
 	}
 	catch (const CGAL::Assertion_exception &e) {
