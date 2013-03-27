@@ -28,6 +28,7 @@
 #include "node.h"
 #include "polyset.h"
 #include "evalcontext.h"
+#include "Polygon2d.h"
 #include "dxfdata.h"
 #include "dxftess.h"
 #include "builtin.h"
@@ -36,6 +37,7 @@
 #include "context.h"
 #include <sstream>
 #include <assert.h>
+#include <boost/foreach.hpp>
 #include <boost/assign/std/vector.hpp>
 using namespace boost::assign; // bring 'operator+=()' into scope
 
@@ -104,7 +106,7 @@ public:
 	primitive_type_e type;
 	int convexity;
 	Value points, paths, faces;
-	virtual PolySet *evaluate_polyset(class PolySetEvaluator *) const;
+	virtual Geometry *evaluate_geometry(class PolySetEvaluator *) const;
 };
 
 /**
@@ -187,8 +189,8 @@ AbstractNode *PrimitiveModule::instantiate(const Context *ctx, const ModuleInsta
 		node->fa = F_MINIMUM;
 	}
 
-
-	if (type == CUBE) {
+	switch (this->type)  {
+	case CUBE: {
 		Value size = c.lookup_variable("size");
 		Value center = c.lookup_variable("center");
 		size.getDouble(node->x);
@@ -198,16 +200,16 @@ AbstractNode *PrimitiveModule::instantiate(const Context *ctx, const ModuleInsta
 		if (center.type() == Value::BOOL) {
 			node->center = center.toBool();
 		}
+		break;
 	}
-
-	if (type == SPHERE) {
+	case SPHERE: {
 		const Value r = lookup_radius(c, "d", "r");
 		if (r.type() == Value::NUMBER) {
 			node->r1 = r.toDouble();
 		}
+		break;
 	}
-
-	if (type == CYLINDER) {
+	case CYLINDER: {
 		const Value h = c.lookup_variable("h");
 		if (h.type() == Value::NUMBER) {
 			node->h = h.toDouble();
@@ -231,21 +233,20 @@ AbstractNode *PrimitiveModule::instantiate(const Context *ctx, const ModuleInsta
 		if (center.type() == Value::BOOL) {
 			node->center = center.toBool();
 		}
+		break;
 	}
-
-	if (type == POLYHEDRON) {
+	case POLYHEDRON: {
 		node->points = c.lookup_variable("points");
 		node->faces = c.lookup_variable("faces");
 		if (node->faces.type() == Value::UNDEFINED) {
-			// backwards compatable
+			// backwards compatible
 			node->faces = c.lookup_variable("triangles");
 			if (node->faces.type() != Value::UNDEFINED) {
 				PRINT("DEPRECATED: polyhedron(triangles=[]) will be removed in future releases. Use polyhedron(faces=[]) instead.");
 			}
 		}
 	}
-
-	if (type == SQUARE) {
+	case SQUARE: {
 		Value size = c.lookup_variable("size");
 		Value center = c.lookup_variable("center");
 		size.getDouble(node->x);
@@ -254,18 +255,20 @@ AbstractNode *PrimitiveModule::instantiate(const Context *ctx, const ModuleInsta
 		if (center.type() == Value::BOOL) {
 			node->center = center.toBool();
 		}
+		break;
 	}
-
-	if (type == CIRCLE) {
+	case CIRCLE: {
 		const Value r = lookup_radius(c, "d", "r");
 		if (r.type() == Value::NUMBER) {
 			node->r1 = r.toDouble();
 		}
+		break;
 	}
-
-	if (type == POLYGON) {
+	case POLYGON: {
 		node->points = c.lookup_variable("points");
 		node->paths = c.lookup_variable("paths");
+		break;
+	}
 	}
 
 	node->convexity = c.lookup_variable("convexity", true).toDouble();
@@ -299,12 +302,14 @@ static void generate_circle(point2d *circle, double r, int fragments)
 	}
 }
 
-PolySet *PrimitiveNode::evaluate_polyset(class PolySetEvaluator *) const
+Geometry *PrimitiveNode::evaluate_geometry(class PolySetEvaluator *) const
 {
-	PolySet *p = new PolySet();
+	Geometry *g = NULL;
 
 	if (this->type == CUBE && this->x > 0 && this->y > 0 && this->z > 0)
 	{
+		PolySet *p = new PolySet();
+		g = p;
 		double x1, x2, y1, y2, z1, z2;
 		if (this->center) {
 			x1 = -this->x/2;
@@ -359,6 +364,8 @@ PolySet *PrimitiveNode::evaluate_polyset(class PolySetEvaluator *) const
 
 	if (this->type == SPHERE && this->r1 > 0)
 	{
+		PolySet *p = new PolySet();
+		g = p;
 		struct ring_s {
 			point2d *points;
 			double z;
@@ -427,6 +434,8 @@ sphere_next_r2:
 	if (this->type == CYLINDER && 
 			this->h > 0 && this->r1 >=0 && this->r2 >= 0 && (this->r1 > 0 || this->r2 > 0))
 	{
+		PolySet *p = new PolySet();
+		g = p;
 		int fragments = get_fragments_from_r(fmax(this->r1, this->r2), this->fn, this->fs, this->fa);
 
 		double z1, z2;
@@ -486,6 +495,8 @@ sphere_next_r2:
 
 	if (this->type == POLYHEDRON)
 	{
+		PolySet *p = new PolySet();
+		g = p;
 		p->convexity = this->convexity;
 		for (size_t i=0; i<this->faces.toVector().size(); i++)
 		{
@@ -503,6 +514,30 @@ sphere_next_r2:
 
 	if (this->type == SQUARE && x > 0 && y > 0)
 	{
+/*
+		Polygon2d *p = new Polygon2d();
+		g = p;
+		double x1, x2, y1, y2;
+		if (this->center) {
+			x1 = -this->x/2;
+			x2 = +this->x/2;
+			y1 = -this->y/2;
+			y2 = +this->y/2;
+		} else {
+			x1 = y1 = 0;
+			x2 = this->x;
+			y2 = this->y;
+		}
+
+		Outline2d o(4);
+		o.push_back(Vector2d(x1, y1));
+		o.push_back(Vector2d(x2, y1));
+		o.push_back(Vector2d(x2, y2));
+		o.push_back(Vector2d(x1, y2));
+*/
+
+		PolySet *p = new PolySet();
+		g = p;
 		double x1, x2, y1, y2;
 		if (this->center) {
 			x1 = -this->x/2;
@@ -525,6 +560,8 @@ sphere_next_r2:
 
 	if (this->type == CIRCLE)
 	{
+		PolySet *p = new PolySet();
+		g = p;
 		int fragments = get_fragments_from_r(this->r1, this->fn, this->fs, this->fa);
 
 		p->is2d = true;
@@ -538,6 +575,8 @@ sphere_next_r2:
 
 	if (this->type == POLYGON)
 	{
+		PolySet *p = new PolySet();
+		g = p;
 		DxfData dd;
 
 		for (size_t i=0; i<this->points.toVector().size(); i++) {
@@ -590,9 +629,54 @@ sphere_next_r2:
 		p->convexity = convexity;
 		dxf_tesselate(p, dd, 0, Vector2d(1,1), true, false, 0);
 		dxf_border_to_ps(p, dd);
+
+/*
+		Polygon2D *p = new Polygon2D();
+		g = p;
+		// Collect vertices
+		std::vector<Vector2d> vertices;
+		for (size_t i=0; i<this->points.toVector().size(); i++) {
+			double x,y;
+			if (!this->points.toVector()[i].getVec2(x, y)) {
+				PRINTB("ERROR: Unable to convert point at index %d to a vec2 of numbers", i);
+				delete p;
+				return NULL;
+			}
+			vertices.push_back(Vector2d(x, y));
+		}
+
+		Polygon2d polygon;
+
+		// If no indices, assume one single polygon
+		if (this->paths.toVector().size() == 0) {
+			assert(vertices.size() >= 3); // FIXME: Fail gracefully
+			Outline2d outline;
+			BOOST_FOREACH(const Vector2d &p, vertices) outline.push_back(p);
+			polygon.addOutline(outline);
+		}
+		else {
+			BOOST_FOREACH(const Value &val, this->paths.toVector()) {
+				Outline2d outline;
+				BOOST_FOREACH(const Value &idxval, val.toVector()) {
+					unsigned int idx = idxval.toDouble();
+					if (idx < vertices.size()) outline.push_back(vertices[idx]);
+				}
+				polygon.addOutline(outline);
+			}
+		}
+
+		ScadPolygon::tessellate(polygons);
+		ScadPolygon::createPolyset(*p, polygons);
+		p->is2d = true;
+		p->convexity = convexity;
+//		dxf_tesselate(p, dd, 0, true, false, 0);
+//		dxf_border_to_ps(p, dd);
+*/
 	}
 
-	return p;
+  // FIXME: IF the above failed, create an empty polyset as that's required later on
+  if (!g) g = new PolySet();
+	return g;
 }
 
 std::string PrimitiveNode::toString() const
