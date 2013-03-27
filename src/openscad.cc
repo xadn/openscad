@@ -198,8 +198,9 @@ int main(int argc, char **argv)
 		("version,v", "print the version")
 		("render", "if exporting a png image, do a full CGAL render")
 		("camera", po::value<string>(), "parameters for camera when exporting png")
-	        ("imgsize", po::value<string>(), "=width,height for exporting png")
+		("imgsize", po::value<string>(), "=width,height for exporting png")
 		("projection", po::value<string>(), "(o)rtho or (p)erspective when exporting png")
+		("OFF-tessellate", po::value<string>(), "OFF triangle tessellation = no|yes 0|1 off|on")
 		("o,o", po::value<string>(), "out-file")
 		("s,s", po::value<string>(), "stl-file")
 		("x,x", po::value<string>(), "dxf-file")
@@ -226,6 +227,11 @@ int main(int argc, char **argv)
 		help(argv[0]);
 	}
 
+	bool OFF_tessellate = true;
+	if (vm.count("OFF-tessellate")) {
+		std::string tmp = vm["OFF-tessellate"].as<string>();
+		if ( tmp == "off" || tmp == "0" || tmp == "no" ) OFF_tessellate = false;
+	}
 	if (vm.count("help")) help(argv[0]);
 	if (vm.count("version")) version();
 
@@ -439,7 +445,7 @@ int main(int argc, char **argv)
 					PRINTB("Can't open file \"%s\" for export", off_output_file);
 				}
 				else {
-					export_off(&root_N, fstream);
+					export_off(&root_N, OFF_tessellate, fstream);
 					fstream.close();
 				}
 			}

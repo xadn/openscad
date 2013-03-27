@@ -33,6 +33,7 @@ public:
 	Builder(const CGAL_Nef_polyhedron3 &nef) : nef(nef) { }
 	void operator()(CGAL_HDS& hds)
 	{
+		std::cout << "builder operator()\n";
 		CGAL_Polybuilder B(hds, true);
 		std::vector<CGAL_HDS::Vertex::Point> vertices;
 		CGAL_Nef_polyhedron3::Vertex_const_iterator vi;
@@ -51,6 +52,7 @@ public:
 
 		CGAL_Nef_polyhedron3::Halffacet_const_iterator hfaceti;
 		CGAL_forall_halffacets( hfaceti, nef ) {
+			std::cout << "iterating through next facet...\n";
 			if (hfaceti->incident_volume()->mark() == 0) continue;
 			if (hfaceti->mark() == 0) continue;
 			B.begin_facet();
@@ -66,7 +68,9 @@ public:
 				CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c1(cyclei);
 				CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c2(c1);
 				CGAL_For_all( c1, c2 ) {
+					std::cout << "circulating... ";
 	        CGAL_Point_3 source = c1->source()->source()->point();
+					std::cout << source.x() << "," << source.y() << "," << source.z() <<"\n";
 					B.add_vertex_to_facet( vertmap1[ source ] );
 				}
 				cycle_count++;
@@ -78,18 +82,16 @@ public:
 };
 
 
-
-void CGAL_Nef_polyhedron::convertToPolyhedron( CGAL_Polyhedron &P, bool tessellate ) const
+void nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &nef, CGAL_Polyhedron &P, bool tessellate ) const
 {
-	assert(dim==3);
   CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
   try {
 		if (tessellate) {
-  	 	this->p3->convert_to_Polyhedron(P);
+  	 	nef.convert_to_Polyhedron(P);
 		}
 		else {
 			P.clear();
-			Builder builder( *this->p3 );
+			Builder builder( nef );
 			P.delegate(builder);
 		}
   }
@@ -99,6 +101,17 @@ void CGAL_Nef_polyhedron::convertToPolyhedron( CGAL_Polyhedron &P, bool tessella
   CGAL::set_error_behaviour(old_behaviour);
 }
 
+void CGAL_Nef_polyhedron::convertToPolyhedron( CGAL_Polyhedron &P ) const
+{
+	assert(dim==3);
+	nef3_to_polyhedron( this->p3, P, true );
+}
+
+void CGAL_Nef_polyhedron::convertToPolyhedronWithoutTessellation( CGAL_Polyhedron &P ) const
+{
+	assert(dim==3);
+	nef3_to_polyhedron( this->p3, P, false );
+}
 
 #endif /* ENABLE_CGAL */
 

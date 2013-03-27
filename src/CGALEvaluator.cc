@@ -288,7 +288,7 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 
 	std::cout << nef.dump();
 	CGAL_Polyhedron ph;
-	nef.convertToPolyhedron( ph, true );
+	nef.convertToPolyhedron( ph );
 
 	std::cout << "\n---- polyhedron begin --- \n" << ph << "\n---polyhedron end\n";
 
@@ -309,7 +309,6 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 	// Convert the Polyhedron to a PolySet and back again.
 	// This prevents assertions in CGAL/Nef_3/polyhedron_3_to_nef_3.h
 	PolySet *psnew = createPolySetFromPolyhedron( ph );
-	delete ph;
 	if (psnew) {
 		CGAL_Polyhedron *phnew = createPolyhedronFromPolySet( *psnew );
 		delete psnew;

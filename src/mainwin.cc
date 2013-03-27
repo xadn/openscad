@@ -1386,7 +1386,14 @@ void MainWindow::actionExportSTLorOFF(bool)
 	}
 	else {
 		if (stl_mode) export_stl(this->root_N, fstream);
-		else export_off(this->root_N, fstream);
+		else {
+			QMessageBox mbox;
+			mbox.setText("Object File Format (OFF) export: Tessellate faces into triangles?");
+			mbox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+			mbox.setDefaultButton(QMessageBox::Yes);
+			int OFF_tessellate = mbox.exec();
+			export_off(this->root_N, OFF_tessellate==QMessageBox::Yes, fstream);
+		}
 		fstream.close();
 
 		PRINTB("%s export finished.", (stl_mode ? "STL" : "OFF"));
