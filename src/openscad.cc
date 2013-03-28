@@ -77,14 +77,13 @@ namespace fs = boost::filesystem;
 
 static void help(const char *progname)
 {
-	int tab = int(strlen(progname))+8;
-	fprintf(stderr,"Usage: %s [ -o output_file [ -d deps_file ] ]\\\n"
-	        "%*s[ -m make_command ] [ -D var=val [..] ] [ --render ] \\\n"
-	        "%*s[ --camera=translatex,y,z,rotx,y,z,dist | \\\n"
-	        "%*s  --camera=eyex,y,z,centerx,y,z ] \\\n"
-	        "%*s[ --imgsize=width,height ] [ --projection=(o)rtho|(p)ersp] \\\n"
-	        "%*sfilename\n",
-					progname, tab, "", tab, "", tab, "", tab, "", tab, "");
+	int tab = int(strlen(progname))+2;
+	fprintf(stderr,"Usage\n\n: %s [ -o output_file [ -d deps_file ] ]\\\n"
+	  "%*s[ -m make_command ] [ -D var=val [..] ] [ --render ] \\\n"
+	  "%*s[ --camera=translatex,y,z,rotx,y,z,dist | eyex,y,z,centerx,y,z ] \\\n"
+	  "%*s[ --imgsize=width,height ] [ --projection=(o)rtho|(p)erspective] \\\n"
+	  "%*s[ --OFF-tessellate=yes|no ] filename\n",
+					progname, tab, "", tab, "", tab, "", tab, "");
 	exit(1);
 }
 
@@ -230,7 +229,7 @@ int main(int argc, char **argv)
 	bool OFF_tessellate = true;
 	if (vm.count("OFF-tessellate")) {
 		std::string tmp = vm["OFF-tessellate"].as<string>();
-		if ( tmp == "off" || tmp == "0" || tmp == "no" ) OFF_tessellate = false;
+		if (tmp=="off"||tmp=="0"||tmp=="no"||tmp=="n") OFF_tessellate = false;
 	}
 	if (vm.count("help")) help(argv[0]);
 	if (vm.count("version")) version();

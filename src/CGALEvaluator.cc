@@ -186,6 +186,11 @@ CGAL_Nef_polyhedron CGALEvaluator::applyHull(const CgaladvNode &node)
 CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 {
 	/*
+fixme - still crashes a lot.. ex
+subdiv()
+difference() { translate([0,0,0.1]) scale(0.9) cylinder(); cylinder(); }
+
+
 	the problem:
 	subdivision surfaces come out 'not right', they are not 'symmetrical'. 
 	an example is dowloadin 'aircraft.off' from the 'subdivision surface tutorial'
@@ -285,10 +290,10 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 		return nef;
 	}
 	if ( node.subdiv_level == 0 ) return nef;
-
+	
 	std::cout << nef.dump();
-	CGAL_Polyhedron ph;
-	nef.convertToPolyhedron( ph );
+	CGAL_Polyhedron ph,ph2;
+	nef.convertToPolyhedronWithoutTessellation( ph );
 
 	std::cout << "\n---- polyhedron begin --- \n" << ph << "\n---polyhedron end\n";
 
@@ -308,6 +313,8 @@ CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 	//
 	// Convert the Polyhedron to a PolySet and back again.
 	// This prevents assertions in CGAL/Nef_3/polyhedron_3_to_nef_3.h
+	std::cout << "subdiv ran\n";
+
 	PolySet *psnew = createPolySetFromPolyhedron( ph );
 	if (psnew) {
 		CGAL_Polyhedron *phnew = createPolyhedronFromPolySet( *psnew );

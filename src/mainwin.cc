@@ -1369,6 +1369,16 @@ void MainWindow::actionExportSTLorOFF(bool)
 		return;
 	}
 
+	int OFF_tessellate = QMessageBox::No;
+	if (!stl_mode) {
+		QMessageBox mbox;
+		mbox.setText("Object File Format (OFF) export");
+		mbox.setInformativeText("Should I tessellate faces using triangles?");
+		mbox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
+		mbox.setDefaultButton(QMessageBox::Yes);
+		OFF_tessellate = mbox.exec();
+	}
+
 	QString suffix = stl_mode ? ".stl" : ".off";
 	QString stl_filename = QFileDialog::getSaveFileName(this,
 			stl_mode ? "Export STL File" : "Export OFF File", 
@@ -1386,14 +1396,7 @@ void MainWindow::actionExportSTLorOFF(bool)
 	}
 	else {
 		if (stl_mode) export_stl(this->root_N, fstream);
-		else {
-			QMessageBox mbox;
-			mbox.setText("Object File Format (OFF) export: Tessellate faces into triangles?");
-			mbox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-			mbox.setDefaultButton(QMessageBox::Yes);
-			int OFF_tessellate = mbox.exec();
-			export_off(this->root_N, OFF_tessellate==QMessageBox::Yes, fstream);
-		}
+		else export_off(this->root_N, OFF_tessellate==QMessageBox::Yes, fstream);
 		fstream.close();
 
 		PRINTB("%s export finished.", (stl_mode ? "STL" : "OFF"));

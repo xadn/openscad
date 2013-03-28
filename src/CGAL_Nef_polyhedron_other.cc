@@ -71,7 +71,10 @@ public:
 					std::cout << "circulating... ";
 	        CGAL_Point_3 source = c1->source()->source()->point();
 					std::cout << source.x() << "," << source.y() << "," << source.z() <<"\n";
-					B.add_vertex_to_facet( vertmap1[ source ] );
+					int vert_index = 0;
+					assert(vertmap1.count( source ));
+					vert_index = vertmap1[ source ] ;
+					B.add_vertex_to_facet( vert_index );
 				}
 				cycle_count++;
 			}
@@ -81,9 +84,11 @@ public:
 	}
 };
 
+#include "svg.h"
 
-void nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &nef, CGAL_Polyhedron &P, bool tessellate ) const
+void nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &nef, CGAL_Polyhedron &P, bool tessellate )
 {
+	std::cout << OpenSCAD::dump_svg( nef );
   CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
   try {
 		if (tessellate) {
@@ -93,6 +98,7 @@ void nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &nef, CGAL_Polyhedron &P, bo
 			P.clear();
 			Builder builder( nef );
 			P.delegate(builder);
+			std::cout << "\n-----------\n" << P;
 		}
   }
   catch (const CGAL::Assertion_exception &e) {
@@ -104,13 +110,13 @@ void nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &nef, CGAL_Polyhedron &P, bo
 void CGAL_Nef_polyhedron::convertToPolyhedron( CGAL_Polyhedron &P ) const
 {
 	assert(dim==3);
-	nef3_to_polyhedron( this->p3, P, true );
+	nef3_to_polyhedron( *this->p3, P, true );
 }
 
 void CGAL_Nef_polyhedron::convertToPolyhedronWithoutTessellation( CGAL_Polyhedron &P ) const
 {
 	assert(dim==3);
-	nef3_to_polyhedron( this->p3, P, false );
+	nef3_to_polyhedron( *this->p3, P, false );
 }
 
 #endif /* ENABLE_CGAL */

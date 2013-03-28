@@ -241,6 +241,10 @@ std::string dump_svg( const CGAL_Nef_polyhedron3 &N )
 	out << svg_styleblock( linewidth ) << "\n" << svg_axes() << "\n";
 
   CGAL_Nef_polyhedron3::Volume_const_iterator c;
+	out << " <!-- simple: " << N.is_simple()
+		<< " verts: " << N.number_of_vertices()
+		<< " facets: " << N.number_of_facets()
+		<< " volumes: " <<  N.number_of_volumes() << " --> \n";
   CGAL_forall_volumes(c,N) {
     out << " <!--Volume begin-->\n";
     out << "  <!--Mark: " << (*c).mark() << "-->\n";

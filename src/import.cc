@@ -253,7 +253,6 @@ PolySet *ImportNode::evaluate_polyset(class PolySetEvaluator *) const
 		std::ifstream file(this->filename.c_str(), std::ios::in | std::ios::binary);
 		file >> poly;
 		file.close();
-		
 		p = createPolySetFromPolyhedron(poly);
 #else
   PRINT("WARNING: OFF import requires CGAL.");
