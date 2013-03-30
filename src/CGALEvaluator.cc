@@ -183,6 +183,7 @@ CGAL_Nef_polyhedron CGALEvaluator::applyHull(const CgaladvNode &node)
 	return N;
 }
 
+// Surface Subdivision (aka smoothing of surface mesh)
 CGAL_Nef_polyhedron CGALEvaluator::applySubdiv(const CgaladvNode &node)
 {
 	/*
@@ -291,10 +292,13 @@ difference() { translate([0,0,0.1]) scale(0.9) cylinder(); cylinder(); }
 	}
 	if ( node.subdiv_level == 0 ) return nef;
 	
-	std::cout << nef.dump();
+	std::cout << "applysubdiv\n" << nef.dump();
+	*(nef.p3) = nef.p3->regularization();
+	std::cout << "regularization --\\n" << nef.dump();
+
 	CGAL_Polyhedron ph,ph2;
 	nef.convertToPolyhedronWithoutTessellation( ph );
-
+	
 	std::cout << "\n---- polyhedron begin --- \n" << ph << "\n---polyhedron end\n";
 
 	if (node.subdiv_type==SUBDIV_CATMULL_CLARK)

@@ -54,4 +54,15 @@ translate([0,20,-20]) subdiv("asjdifo","asdifo",13) shape();
 translate([0,30,-20]) subdiv(-123,32,3) shape();
 translate([0,40,-20]) subdiv("-123","1",1,"loop",32,3) shape();
 
+subdiv()a();
+
+
+// nef polyhedra with facets that have holes in them. 
+// (currently crashes)
+module b(){
+difference() 
+{ cube();  translate([0.1,0.1]) scale([0.8,0.8,1]) cube(); }
+}
+
+subdiv()b();
 
