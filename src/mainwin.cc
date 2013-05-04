@@ -1369,14 +1369,24 @@ void MainWindow::actionExportSTLorOFF(bool)
 		return;
 	}
 
-	int OFF_tessellate = QMessageBox::No;
+	Tessellation off_tess = NO_TESSELLATION;
 	if (!stl_mode) {
 		QMessageBox mbox;
+		QPushButton *b1 = mbox.addButton(tr("CGAL Standard"),QMessageBox::ActionRole);
+		QPushButton *b2 = mbox.addButton(tr("Constrained Delaunay Triangulation"),QMessageBox::ActionRole);
+		QPushButton *b3 = mbox.addButton(tr("Straight Skeleton"),QMessageBox::ActionRole);
 		mbox.setText("Object File Format (OFF) export");
-		mbox.setInformativeText("Should I tessellate faces using triangles?");
-		mbox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-		mbox.setDefaultButton(QMessageBox::Yes);
-		OFF_tessellate = mbox.exec();
+		mbox.setInformativeText("Please choose face tessellation method");
+		mbox.setStandardButtons(QMessageBox::Cancel);
+		mbox.setDefaultButton( b1 );
+		int result = mbox.exec();
+		if (result==QMessageBox::Cancel) return;
+		if (mbox.clickedButton()==b1)
+			off_tess = CGAL_NEF_STANDARD;
+		else if (mbox.clickedButton()==b2)
+			off_tess = CONSTRAINED_DELAUNAY_TRIANGULATION;
+		else if (mbox.clickedButton()==b3)
+			off_tess = STRAIGHT_SKELETON;
 	}
 
 	QString suffix = stl_mode ? ".stl" : ".off";
@@ -1396,9 +1406,8 @@ void MainWindow::actionExportSTLorOFF(bool)
 	}
 	else {
 		if (stl_mode) export_stl(this->root_N, fstream);
-		else export_off(this->root_N, OFF_tessellate==QMessageBox::Yes, fstream);
+		else export_off(this->root_N, off_tess, fstream);
 		fstream.close();
-
 		PRINTB("%s export finished.", (stl_mode ? "STL" : "OFF"));
 	}
 

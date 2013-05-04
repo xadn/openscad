@@ -443,6 +443,7 @@ set(CGAL_SOURCES
   ../src/CGALCache.cc
   ../src/PolySetCGALEvaluator.cc
   ../src/CGAL_Nef_polyhedron_DxfData.cc
+  ../src/CGAL_Nef_polyhedron_other.cc
   ../src/cgaladv_minkowski2.cc
   ../src/svg.cc)
 

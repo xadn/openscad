@@ -291,14 +291,12 @@ difference() { translate([0,0,0.1]) scale(0.9) cylinder(); cylinder(); }
 		return nef;
 	}
 	if ( node.subdiv_level == 0 ) return nef;
-	
-	std::cout << "applysubdiv\n" << nef.dump();
-	*(nef.p3) = nef.p3->regularization();
-	std::cout << "regularization --\\n" << nef.dump();
 
 	CGAL_Polyhedron ph,ph2;
-	nef.convertToPolyhedronWithoutTessellation( ph );
-	
+	Tessellation solidface_tess = CGAL_NEF_STANDARD;
+	Tessellation holeface_tess = CGAL_NEF_STANDARD;
+	nef.convertToPolyhedron( ph, solidface_tess, holeface_tess );
+
 	std::cout << "\n---- polyhedron begin --- \n" << ph << "\n---polyhedron end\n";
 
 	if (node.subdiv_type==SUBDIV_CATMULL_CLARK)
@@ -307,14 +305,11 @@ difference() { translate([0,0,0.1]) scale(0.9) cylinder(); cylinder(); }
 		Loop_subdivision( ph, node.subdiv_level );
 	else if (node.subdiv_type==SUBDIV_DOO_SABIN)
 		PRINT("WARNING: Doo Sabin surface subdivision not implemented");
-// causes compiler errors.
-//	DooSabin_subdivision( ph, node.subdiv_level );
+		//causes compiler errors.
+		//DooSabin_subdivision( ph, node.subdiv_level );
 	else if (node.subdiv_type==SUBDIV_SQRT3)
 		Sqrt3_subdivision( ph, node.subdiv_level );
 
-	// note - is this necessary with a non-tessellating polyhedron conversion
-	// above?
-	//
 	// Convert the Polyhedron to a PolySet and back again.
 	// This prevents assertions in CGAL/Nef_3/polyhedron_3_to_nef_3.h
 	std::cout << "subdiv ran\n";

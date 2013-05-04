@@ -37,6 +37,7 @@
 #include "handle_dep.h"
 #include "parsersettings.h"
 #include "rendersettings.h"
+#include "dxftess.h"
 
 #include <string>
 #include <vector>
@@ -78,11 +79,11 @@ namespace fs = boost::filesystem;
 static void help(const char *progname)
 {
 	int tab = int(strlen(progname))+2;
-	fprintf(stderr,"Usage\n\n: %s [ -o output_file [ -d deps_file ] ]\\\n"
+	fprintf(stderr,"Usage:\n\n %s [ -o output_file [ -d deps_file ] ]\\\n"
 	  "%*s[ -m make_command ] [ -D var=val [..] ] [ --render ] \\\n"
 	  "%*s[ --camera=translatex,y,z,rotx,y,z,dist | eyex,y,z,centerx,y,z ] \\\n"
 	  "%*s[ --imgsize=width,height ] [ --projection=(o)rtho|(p)erspective] \\\n"
-	  "%*s[ --OFF-tessellate=yes|no ] filename\n",
+	  "%*s[ --off-tessellate=none|plain|delaunay|skeleton ] filename\n",
 					progname, tab, "", tab, "", tab, "", tab, "");
 	exit(1);
 }
@@ -199,7 +200,7 @@ int main(int argc, char **argv)
 		("camera", po::value<string>(), "parameters for camera when exporting png")
 		("imgsize", po::value<string>(), "=width,height for exporting png")
 		("projection", po::value<string>(), "(o)rtho or (p)erspective when exporting png")
-		("OFF-tessellate", po::value<string>(), "OFF triangle tessellation = no|yes 0|1 off|on")
+		("off-tessellate", po::value<string>(), "off tessellation=none|plain|delaunay|skeleton")
 		("o,o", po::value<string>(), "out-file")
 		("s,s", po::value<string>(), "stl-file")
 		("x,x", po::value<string>(), "dxf-file")
@@ -226,10 +227,13 @@ int main(int argc, char **argv)
 		help(argv[0]);
 	}
 
-	bool OFF_tessellate = true;
-	if (vm.count("OFF-tessellate")) {
-		std::string tmp = vm["OFF-tessellate"].as<string>();
-		if (tmp=="off"||tmp=="0"||tmp=="no"||tmp=="n") OFF_tessellate = false;
+	Tessellation off_tess = CGAL_NEF_STANDARD;
+	if (vm.count("off-tessellate")) {
+		std::string tmp = vm["off-tessellate"].as<string>();
+		if (tmp=="none") off_tess = NO_TESSELLATION;
+		else if (tmp=="plain") off_tess = CGAL_NEF_STANDARD;
+		else if (tmp=="delaunay") off_tess = CONSTRAINED_DELAUNAY_TRIANGULATION;
+		else if (tmp=="skeleton") off_tess = STRAIGHT_SKELETON;
 	}
 	if (vm.count("help")) help(argv[0]);
 	if (vm.count("version")) version();
@@ -443,7 +447,7 @@ int main(int argc, char **argv)
 					PRINTB("Can't open file \"%s\" for export", off_output_file);
 				}
 				else {
-					export_off(&root_N, OFF_tessellate, fstream);
+					export_off(&root_N, off_tess, fstream);
 					fstream.close();
 				}
 			}

@@ -5,6 +5,7 @@
 #include "memory.h"
 #include <string>
 #include "linalg.h"
+#include "tess3d.h"
 
 class CGAL_Nef_polyhedron
 {
@@ -28,8 +29,7 @@ public:
 	int weight() const;
 	class PolySet *convertToPolyset();
 	class DxfData *convertToDxfData() const;
-	void convertToPolyhedron( CGAL_Polyhedron &P ) const;
-	void convertToPolyhedronWithoutTessellation( CGAL_Polyhedron &P ) const;
+	void convertToPolyhedron( CGAL_Polyhedron &P, Tessellation faces = CGAL_NEF_STANDARD, Tessellation faces_w_holes = CGAL_NEF_STANDARD ) const;
 	void transform( const Transform3d &matrix );
 	int dim;
 	shared_ptr<CGAL_Nef_polyhedron2> p2;

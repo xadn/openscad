@@ -118,15 +118,12 @@ void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 	CGAL::set_error_behaviour(old_behaviour);
 }
 
-void export_off(CGAL_Nef_polyhedron *root_N, bool OFF_tessellate, std::ostream &output)
+void export_off(CGAL_Nef_polyhedron *root_N, Tessellation off_tess, std::ostream &output)
 {
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 	try {
 		CGAL_Polyhedron P;
-		if (OFF_tessellate)
-			root_N->convertToPolyhedron( P );
-		else
-			root_N->convertToPolyhedronWithoutTessellation( P );
+		root_N->convertToPolyhedron( P, off_tess, off_tess );
 		output << P;
 	}
 	catch (const CGAL::Assertion_exception &e) {

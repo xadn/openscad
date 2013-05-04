@@ -208,6 +208,7 @@ HEADERS += src/version_check.h \
            src/dxfdata.h \
            src/dxfdim.h \
            src/dxftess.h \
+           src/tess3d.h \
            src/export.h \
            src/expression.h \
            src/function.h \
@@ -319,6 +320,7 @@ SOURCES += src/version_check.cc \
            src/dxftess.cc \
            src/dxftess-glu.cc \
            src/dxftess-cgal.cc \
+           src/tess3d.cc \
            src/CSGTermEvaluator.cc \
            src/svg.cc \
            src/OffscreenView.cc \
