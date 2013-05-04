@@ -424,6 +424,7 @@ set(CORE_SOURCES
   ../src/rotateextrude.cc 
   ../src/printutils.cc 
   ../src/progress.cc 
+  ../src/boost-utils.cc 
   ${FLEX_OpenSCADlexer_OUTPUTS}
   ${BISON_OpenSCADparser_OUTPUTS})
 
