@@ -12,7 +12,7 @@ cgal {
   }
 
   CONFIG(mingw-cross-env) {
-    LIBS += -lgmp -lmpfr -lCGAL
+    LIBS += -lgmp -lmpfr -lCGAL -lCGAL_Core
     QMAKE_CXXFLAGS += -frounding-math 
   } else {
     win32 {
@@ -21,7 +21,7 @@ cgal {
       }
       LIBS += $$CGAL_DIR/auxiliary/gmp/lib/libmpfr-4.lib -lCGAL-vc90-mt-s
     } else {
-      LIBS += -lgmp -lmpfr -lCGAL
+      LIBS += -lgmp -lmpfr -lCGAL -lCGAL_Core
       QMAKE_CXXFLAGS += -frounding-math 
     }
   }
