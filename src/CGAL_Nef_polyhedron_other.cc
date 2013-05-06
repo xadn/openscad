@@ -41,7 +41,7 @@ void Builder::operator()(CGAL_HDS& hds)
 	CGAL_forall_halffacets( hfaceti, nef ) {
 		debug << "iterating through next facet...\n";
 		if (hfaceti->incident_volume()->mark() == 0) continue;
-		if (hfaceti->mark() == 0) continue;
+		//if (hfaceti->mark() == 0) continue;
 		CGAL_Nef_polyhedron3::Halffacet_cycle_const_iterator cyclei;
 		int cycle_count = 0;
 		std::vector<CGAL_Polygon_3> pgons;
