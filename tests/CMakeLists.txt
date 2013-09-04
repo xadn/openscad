@@ -188,7 +188,7 @@ endif(${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 
 # Turn off Eigen SIMD optimization
 if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-  if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
+  if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "^FreeBSD")
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DEIGEN_DONT_ALIGN")
   endif()
 endif()
@@ -533,24 +533,6 @@ add_library(tests-offscreen STATIC ${OFFSCREEN_SOURCES})
 set(TESTS-NOCGAL-LIBRARIES ${TESTS-CORE-LIBRARIES})
 
 #
-# echotest
-#
-add_executable(echotest echotest.cc)
-target_link_libraries(echotest tests-nocgal ${TESTS-NOCGAL-LIBRARIES})
-
-#
-# dumptest
-#
-add_executable(dumptest dumptest.cc)
-target_link_libraries(dumptest tests-nocgal ${TESTS-NOCGAL-LIBRARIES})
-
-#
-# moduledumptest
-#
-add_executable(moduledumptest moduledumptest.cc)
-target_link_libraries(moduledumptest tests-nocgal ${TESTS-NOCGAL-LIBRARIES})
-
-#
 # modulecachetest
 #
 add_executable(modulecachetest modulecachetest.cc)
@@ -563,46 +545,11 @@ add_executable(csgtexttest csgtexttest.cc CSGTextRenderer.cc CSGTextCache.cc)
 target_link_libraries(csgtexttest tests-nocgal ${TESTS-NOCGAL-LIBRARIES})
 
 #
-# csgtermtest
-#
-add_executable(csgtermtest csgtermtest.cc ../src/CSGTermEvaluator.cc)
-target_link_libraries(csgtermtest tests-nocgal ${TESTS-NOCGAL-LIBRARIES})
-
-#
-# cgaltest
-#
-add_executable(cgaltest cgaltest.cc)
-set_target_properties(cgaltest PROPERTIES COMPILE_FLAGS "-DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(cgaltest tests-cgal ${TESTS-CGAL-LIBRARIES})
-
-#
-# cgalstlsanitytest
-#
-add_executable(cgalstlsanitytest cgalstlsanitytest.cc)
-set_target_properties(cgalstlsanitytest PROPERTIES COMPILE_FLAGS "-DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(cgalstlsanitytest tests-cgal ${TESTS-CGAL-LIBRARIES})
-
-#
-# cgalpngtest
-#
-add_executable(cgalpngtest cgalpngtest.cc ../src/CGALRenderer.cc ../src/renderer.cc ../src/rendersettings.cc)
-set_target_properties(cgalpngtest PROPERTIES COMPILE_FLAGS "-DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(cgalpngtest tests-offscreen tests-cgal ${OPENCSG_LIBRARY} ${TESTS-CGAL-LIBRARIES} ${GLEW_LIBRARY} ${COCOA_LIBRARY})
-
-#
 # cgalcachetest
 #
 add_executable(cgalcachetest cgalcachetest.cc)
 set_target_properties(cgalcachetest PROPERTIES COMPILE_FLAGS "-DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
 target_link_libraries(cgalcachetest tests-cgal ${TESTS-CGAL-LIBRARIES} ${GLEW_LIBRARY} ${COCOA_LIBRARY})
-
-#
-# opencsgtest
-#
-
-add_executable(opencsgtest opencsgtest.cc csgtestcore.cc ../src/OpenCSGRenderer.cc ../src/ThrownTogetherRenderer.cc ../src/renderer.cc ../src/rendersettings.cc)
-set_target_properties(opencsgtest PROPERTIES COMPILE_FLAGS "-DENABLE_OPENCSG -DENABLE_CGAL ${CGAL_CXX_FLAGS_INIT}")
-target_link_libraries(opencsgtest tests-offscreen tests-cgal ${OPENCSG_LIBRARY} ${TESTS-CGAL-LIBRARIES} ${GLEW_LIBRARY} ${COCOA_LIBRARY})
 
 #
 # throwntogethertest
@@ -770,7 +717,6 @@ configure_file(${CMAKE_SOURCE_DIR}/../testdata/scad/templates/import_dxf-tests-t
                ${CMAKE_SOURCE_DIR}/../testdata/scad/features/import_dxf-tests.scad)
 
 # Find all scad files
-file(GLOB MINIMAL_FILES ${CMAKE_SOURCE_DIR}/../testdata/scad/minimal/*.scad)
 file(GLOB FEATURES_FILES ${CMAKE_SOURCE_DIR}/../testdata/scad/features/*.scad)
 file(GLOB BUGS_FILES ${CMAKE_SOURCE_DIR}/../testdata/scad/bugs/*.scad)
 file(GLOB SCAD_DXF_FILES ${CMAKE_SOURCE_DIR}/../testdata/scad/dxf/*.scad)
@@ -778,7 +724,6 @@ file(GLOB FUNCTION_FILES ${CMAKE_SOURCE_DIR}/../testdata/scad/functions/*.scad)
 file(GLOB EXAMPLE_FILES ${CMAKE_SOURCE_DIR}/../examples/*.scad)
 
 list(APPEND ECHO_FILES ${FUNCTION_FILES}
-            ${CMAKE_SOURCE_DIR}/../testdata/scad/minimal/echo.scad
             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/echo-tests.scad
             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/escape-test.scad
             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/parser-tests.scad
@@ -792,14 +737,18 @@ list(APPEND ECHO_FILES ${FUNCTION_FILES}
             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/value-reassignment-tests.scad
             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/value-reassignment-tests2.scad
             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/variable-scope-tests.scad
-            ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/lookup-tests.scad)
+            ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/lookup-tests.scad
+            ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/expression-shortcircuit-tests.scad)
 
-list(APPEND DUMPTEST_FILES ${MINIMAL_FILES} ${FEATURES_FILES} ${EXAMPLE_FILES})
+list(APPEND DUMPTEST_FILES ${FEATURES_FILES} ${EXAMPLE_FILES})
 list(APPEND DUMPTEST_FILES ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/escape-test.scad
                            ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/include-tests.scad
                            ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/use-tests.scad
                            ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/localfiles-test.scad
-                           ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/localfiles_dir/localfiles-compatibility-test.scad)
+                           ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/localfiles_dir/localfiles-compatibility-test.scad
+                           ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allexpressions.scad
+                           ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allfunctions.scad
+                           ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allmodules.scad)
 
 list(APPEND CGALPNGTEST_FILES ${FEATURES_FILES} ${SCAD_DXF_FILES} ${EXAMPLE_FILES})
 list(APPEND CGALPNGTEST_FILES ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/include-tests.scad
@@ -817,27 +766,6 @@ list(APPEND CGALSTLSANITYTEST_FILES ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/no
 
 list(APPEND OPENSCAD-CGALPNG_FILES ${CGALPNGTEST_FILES})
 list(APPEND OPENSCAD-CSGPNG_FILES ${OPENCSGTEST_FILES})
-
-# Disable tests which are known to cause floating point comparison issues
-# Once we're capable of comparing these across platforms, we can put these back in
-disable_tests(dumptest_transform-tests
-              dumptest_render-tests
-              dumptest_difference-tests
-              dumptest_intersection-tests
-              dumptest_text-search-test
-              dumptest_example001
-              dumptest_example005
-              dumptest_example006
-              dumptest_example007
-              dumptest_example008
-              dumptest_example012
-              dumptest_example013
-              dumptest_example016
-              dumptest_example017
-              dumptest_example020
-              dumptest_example021
-              dumptest_example022
-              dumptest_example023)
 
 # FIXME: This test illustrates a weakness in child() combined with modifiers.
 # Reenable it when this is improved
@@ -873,15 +801,7 @@ set_test_config(Heavy opencsgtest_minkowski3-tests
                       cgalpngtest_for-tests
                       cgalpngtest_for-nested-tests
                       cgalpngtest_intersection-tests
-                      cgalpngtest_text-search-test
-                      openscad-cgalpng_projection-tests
-                      openscad-cgalpng_rotate_extrude-tests
-                      openscad-cgalpng_surface-tests
-                      openscad-cgalpng_sphere-tests
-                      openscad-cgalpng_minkowski3-tests
-                      openscad-cgalpng_for-tests
-                      openscad-cgalpng_for-nested-tests
-                      openscad-cgalpng_intersection-tests)
+                      cgalpngtest_text-search-test)
 
 foreach(FILE ${EXAMPLE_FILES})
   get_test_fullname(cgalpngtest ${FILE} TEST_FULLNAME)
@@ -939,20 +859,26 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/CTestCustom.cmake ${TMP})
 
 # Add tests
 
-add_cmdline_test(echotest SUFFIX txt FILES ${ECHO_FILES})
-add_cmdline_test(dumptest SUFFIX txt FILES ${DUMPTEST_FILES})
-add_cmdline_test(moduledumptest SUFFIX txt FILES
-                 ${CMAKE_SOURCE_DIR}/../testdata/scad/minimal/allmodules.scad
-                 ${CMAKE_SOURCE_DIR}/../testdata/scad/minimal/allfunctions.scad
-                 ${CMAKE_SOURCE_DIR}/../testdata/scad/minimal/allexpressions.scad)
-add_cmdline_test(csgtexttest SUFFIX txt FILES ${MINIMAL_FILES})
-add_cmdline_test(csgtermtest SUFFIX txt FILES ${MINIMAL_FILES})
-add_cmdline_test(cgalpngtest SUFFIX png FILES ${CGALPNGTEST_FILES})
-add_cmdline_test(opencsgtest SUFFIX png FILES ${OPENCSGTEST_FILES})
+add_cmdline_test(echotest EXE ${CMAKE_SOURCE_DIR}/echotest SUFFIX txt ARGS ${GUI_BINPATH} FILES ${ECHO_FILES})
+add_cmdline_test(dumptest EXE ${CMAKE_SOURCE_DIR}/dumptest SUFFIX csg ARGS ${GUI_BINPATH} FILES ${DUMPTEST_FILES})
+add_cmdline_test(moduledumptest EXE ${GUI_BINPATH} ARGS -o SUFFIX ast FILES
+                 ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allmodules.scad
+                 ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allfunctions.scad
+                 ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allexpressions.scad)
+add_cmdline_test(csgtexttest SUFFIX txt FILES
+                             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allexpressions.scad
+                             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allfunctions.scad
+                             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allmodules.scad)
+add_cmdline_test(csgtermtest EXE ${GUI_BINPATH} ARGS -o SUFFIX term FILES
+                             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allexpressions.scad
+                             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allfunctions.scad
+                             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/allmodules.scad)
+add_cmdline_test(cgalpngtest EXE ${GUI_BINPATH} ARGS --render -o SUFFIX png FILES ${CGALPNGTEST_FILES})
+add_cmdline_test(opencsgtest EXE ${GUI_BINPATH} ARGS -o SUFFIX png FILES ${OPENCSGTEST_FILES})
 add_cmdline_test(throwntogethertest SUFFIX png FILES ${THROWNTOGETHERTEST_FILES})
 # FIXME: We don't actually need to compare the output of cgalstlsanitytest
 # with anything. It's self-contained and returns != 0 on error
-add_cmdline_test(cgalstlsanitytest SUFFIX txt FILES ${CGALSTLSANITYTEST_FILES})
+add_cmdline_test(cgalstlsanitytest EXE ${CMAKE_SOURCE_DIR}/cgalstlsanitytest SUFFIX txt ARGS ${GUI_BINPATH} FILES ${CGALSTLSANITYTEST_FILES})
 
 # Tests using the actual OpenSCAD binary
 
@@ -963,13 +889,6 @@ add_cmdline_test(openscad-nonascii EXE ${GUI_BINPATH} ARGS -o
 
 
 # Image output
-add_cmdline_test(openscad-cgalpng EXE ${GUI_BINPATH} ARGS --render -o 
-                 EXPECTEDDIR cgalpngtest SUFFIX png 
-                 FILES ${OPENSCAD-CGALPNG_FILES})
-add_cmdline_test(openscad-csgpng EXE ${GUI_BINPATH} ARGS -o 
-                 EXPECTEDDIR opencsgtest SUFFIX png 
-                 FILES ${OPENSCAD-CGALPNG_FILES})
-
 add_cmdline_test(openscad-imgsize EXE ${GUI_BINPATH}
                  ARGS --imgsize 100,100 -o 
                  SUFFIX png 
