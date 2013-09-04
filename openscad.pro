@@ -155,7 +155,6 @@ CONFIG += cgal
 CONFIG += opencsg
 CONFIG += boost
 CONFIG += eigen
-CONFIG += libxml
 
 #Uncomment the following line to enable QCodeEdit
 #CONFIG += qcodeedit

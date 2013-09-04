@@ -30,7 +30,6 @@
 #include <math.h>
 #include <polyset.h>
 #include <dxfdata.h>
-#include <libxml++/libxml++.h>
 
 #include <rapidxml.hpp>
 #include <rapidxml_utils.hpp>
@@ -113,7 +112,6 @@ public:
   ~SVGData();
 
   class PolySet* convertToPolyset();
-  void traverse_subtree(TransformMatrix parent_matrix, const xmlpp::Node* node);
   void rapid_traverse_subtree(TransformMatrix parent_matrix, rapidxml::xml_node<> *node);
 
 private:
@@ -122,7 +120,7 @@ private:
   void add_point(float x, float y);
   void add_arc_points(float xc, float yc, float rx, float ry, float start, float end);
 
-  void parse_path_description(Glib::ustring d);
+  void parse_path_description(std::string d);
   std::vector<float> get_params(std::string str);
   void render_rect(float x, float y, float width, float height, float rx, float ry);
   void render_line_to(float x0, float y0, float x1, float y1);
@@ -137,7 +135,6 @@ private:
     ctm = tm;
   }
 
-  xmlpp::DomParser* parser = NULL;
   rapidxml::xml_document<> rapid_rootdoc;
   rapidxml::file<> *rapid_svgfile = NULL;
 
