@@ -1,0 +1,1 @@
+import("../../svg/lwpolyline.svg");
