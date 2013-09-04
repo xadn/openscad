@@ -32,6 +32,9 @@
 #include <dxfdata.h>
 #include <libxml++/libxml++.h>
 
+#include <rapidxml.hpp>
+#include <rapidxml_utils.hpp>
+
 class TransformMatrix {
 public:
   TransformMatrix(){
@@ -111,6 +114,7 @@ public:
 
   class PolySet* convertToPolyset();
   void traverse_subtree(TransformMatrix parent_matrix, const xmlpp::Node* node);
+  void rapid_traverse_subtree(TransformMatrix parent_matrix, rapidxml::xml_node<> *node);
 
 private:
   void start_path();
@@ -133,10 +137,14 @@ private:
     ctm = tm;
   }
 
-  xmlpp::DomParser* parser;
-  DxfData *dxfdata;
-  PolySet *p;
-  Grid2d<int>* grid;
+  xmlpp::DomParser* parser = NULL;
+  rapidxml::xml_document<> rapid_rootdoc;
+  rapidxml::file<> *rapid_svgfile = NULL;
+
+  DxfData *dxfdata = NULL;
+  PolySet *p = NULL;
+  PolySet *rapid_polyset = NULL;
+  Grid2d<int>* grid = NULL;
   float document_height;
   int first_point, last_point;
   double fn, fs, fa;

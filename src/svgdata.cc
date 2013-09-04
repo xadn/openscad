@@ -37,7 +37,7 @@
 
 SVGData::SVGData(double fn, double fs, double fa, std::string filename, std::string layername) : fn(fn), fs(fs), fa(fa), filename(filename), layername(layername) {
 	handle_dep(filename); // Register ourselves as a dependency
-
+  this->fa=0;
   parser = NULL;
   dxfdata = new DxfData();
   p = new PolySet();
@@ -46,11 +46,15 @@ SVGData::SVGData(double fn, double fs, double fa, std::string filename, std::str
   try{
     parser = new xmlpp::DomParser();
     parser->parse_file(filename);
+    this->rapid_svgfile = new rapidxml::file<>( filename.c_str() );
+    std::cout << "RapidXML read n chars:" << rapid_svgfile->size() << "\n";
+    rapid_rootdoc.parse<0>(rapid_svgfile->data());
   }
   catch(const std::exception& ex)
   {
     std::cout << "Exception caught: " << ex.what() << std::endl;
   }
+
 }
 
 SVGData::~SVGData(){
@@ -59,6 +63,7 @@ SVGData::~SVGData(){
 
   if (parser)
     free(parser);
+  free( rapid_svgfile );
 }
 
 void SVGData::add_point(float x, float y){
@@ -568,6 +573,110 @@ TransformMatrix SVGData::parse_transform(std::string transform){
   return tm;
 }
 
+void SVGData::rapid_traverse_subtree(TransformMatrix parent_matrix, rapidxml::xml_node<> * node)
+{
+  TransformMatrix tm = parent_matrix;
+
+  std::string nodename(node->name());
+
+  if ( node ) {
+    rapidxml::xml_attribute<> *inkscape_label = NULL;
+    rapidxml::xml_attribute<> *inkscape_groupmode = NULL;
+    rapidxml::xml_attribute<> *transform = NULL;
+
+    inkscape_label = node->first_attribute( "label" );
+    inkscape_groupmode = node->first_attribute( "groupmode" );
+    inkscape_groupmode = node->first_attribute( "transform" );
+
+    if (transform)
+      tm = parent_matrix * parse_transform(transform->value());
+
+    if (nodename == "g")
+      if (inkscape_label && inkscape_groupmode)
+        if (!strncmp(inkscape_groupmode->value(),"layer",5))
+          this->layer = inkscape_label->value();
+  }
+
+  setCurrentTransformMatrix(tm);
+
+  if ( nodename == "svg" ){
+    if( node ) {
+      rapidxml::xml_attribute<> *height = node->first_attribute( "height" );
+      if (height) document_height = atof(height->value());
+    }
+  }
+
+  if ( nodename == "path" ){
+    if( node ) {
+      rapidxml::xml_attribute<> *d = node->first_attribute( "d" );
+      if (d) {
+        std::cout << "path description = " << d->value() << std::endl;
+        start_path();
+        parse_path_description(d->value());
+        close_path();
+      }
+    }
+  }
+
+  if (nodename == "rect") {
+    if (node) {
+      rapidxml::xml_attribute<>* width_attr = node->first_attribute("width");
+      rapidxml::xml_attribute<>* height_attr = node->first_attribute("height");
+      rapidxml::xml_attribute<>* x_attr = node->first_attribute("x");
+      rapidxml::xml_attribute<>* y_attr = node->first_attribute("y");
+      rapidxml::xml_attribute<>* rx_attr = node->first_attribute("rx");
+      rapidxml::xml_attribute<>* ry_attr = node->first_attribute("ry");
+
+      float x, y, width, height, rx, ry;
+
+      x = x_attr ? atof(x_attr->value()) : 0;
+      y = y_attr ? atof(y_attr->value()) : 0;
+
+      if(!rx_attr && !ry_attr){
+        rx=0; ry=0;
+      }
+
+      if(rx_attr && !ry_attr){
+        rx=ry=atof(rx_attr->value());
+      }
+
+      if(!rx_attr && ry_attr){
+        rx=ry=atof(ry_attr->value());
+      }
+
+      if(rx_attr && ry_attr){
+        rx=atof(rx_attr->value());
+        ry=atof(ry_attr->value());
+      }
+
+      if(width_attr && height_attr){
+        width = atof(width_attr->value());
+        height = atof(height_attr->value());
+
+        if (rx > width/2)
+          rx = width/2;
+
+        if (ry > height/2)
+          ry = height/2;
+
+        if(width > 0 && height > 0){
+          render_rect(x, y, width, height, rx, ry);
+          std::cout << "[svg:rect] x:" << x << " y:" << y << " width:" << width << " height:" << height << " rx:" << rx << " ry:" << ry << std::endl;
+        }
+      }
+    }
+  }
+
+  if (node) {
+    rapidxml::xml_node<> *i=NULL;
+    for ( i = node->first_node(); i!=0 ; i=i->next_sibling() ) {
+      rapid_traverse_subtree( tm, i );
+    }
+  }
+
+  layer.empty();
+}
+
 void SVGData::traverse_subtree(TransformMatrix parent_matrix, const xmlpp::Node* node){
   TransformMatrix tm = parent_matrix;
 
@@ -675,15 +784,20 @@ void SVGData::traverse_subtree(TransformMatrix parent_matrix, const xmlpp::Node*
 PolySet* SVGData::convertToPolyset(){
   if (!parser)
     return NULL;
-
-  const xmlpp::Node* pNode = parser->get_document()->get_root_node();
   TransformMatrix tm;
   tm.setIdentity();
-  traverse_subtree(tm, pNode);
 
-	p->is2d = true;
-	dxf_tesselate(p, *dxfdata, 0, Vector2d(1,1), true, false, 0);
-	dxf_border_to_ps(p, *dxfdata);
+  const xmlpp::Node* pNode = parser->get_document()->get_root_node();
+  traverse_subtree(tm, pNode);
+  if (p) p->is2d = true;
+  dxf_tesselate(p, *dxfdata, 0, Vector2d(1,1), true, false, 0);
+  dxf_border_to_ps(p, *dxfdata);
+
+  rapid_traverse_subtree(tm, rapid_rootdoc.first_node() );
+  if (rapid_polyset) rapid_polyset->is2d = true;
+  //dxf_tesselate(p, *dxfdata, 0, Vector2d(1,1), true, false, 0);
+  //dxf_border_to_ps(p, *dxfdata);
+
   return p;
 }
 
