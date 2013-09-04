@@ -109,7 +109,7 @@ void dxf_tesselate(PolySet *ps, DxfData &dxf, double rot, Vector2d scale, bool u
 	Grid2d<point_info_t> point_info(GRID_FINE);
 	boost::unordered_map<edge_t,int> edge_to_triangle;
 	boost::unordered_map<edge_t,int> edge_to_path;
-	int duplicate_vertices = 0;
+	std::vector<std::pair<double,double> > duplicate_verts;
 
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 	try {
@@ -132,7 +132,7 @@ void dxf_tesselate(PolySet *ps, DxfData &dxf, double rot, Vector2d scale, bool u
 				// ..maybe it would be better to assert here. But this would
 				// break compatibility with the glu tesselator that handled such
 				// cases just fine.
-				duplicate_vertices++;
+				duplicate_verts.push_back(std::pair<double,double>(x,y));
 				continue;
 			}
 
@@ -166,9 +166,14 @@ void dxf_tesselate(PolySet *ps, DxfData &dxf, double rot, Vector2d scale, bool u
 		}
 	}
 
-	if ( duplicate_vertices > 0 ) {
-		PRINT( "WARNING: Duplicate vertices and/or intersecting lines found during DXF Tessellation." );
+	if ( duplicate_verts.size() > 0 ) {
+		PRINT( "WARNING: Duplicate vertices and/or intersecting lines found during polygon tessellation." );
 		PRINT( "WARNING: Modify the polygon to be a Simple Polygon. Render is incomplete." );
+		for (int i=0;i<duplicate_verts.size();i++) {
+			PRINTB( "DUPLICATE POINT: %f,%f",
+				duplicate_verts[i].first %
+				duplicate_verts[i].second );
+		}
 	}
 
 	}
