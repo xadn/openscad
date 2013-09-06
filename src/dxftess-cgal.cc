@@ -170,7 +170,7 @@ void dxf_tesselate(PolySet *ps, DxfData &dxf, double rot, Vector2d scale, bool u
 		PRINT( "WARNING: Duplicate vertices and/or intersecting lines found during polygon tessellation." );
 		PRINT( "WARNING: Modify the polygon to be a Simple Polygon. Render is incomplete." );
 		for (int i=0;i<duplicate_verts.size();i++) {
-			PRINTB( "DUPLICATE POINT: %f,%f",
+			PRINTB( "DUPLICATE POINTS AT: %f,%f",
 				duplicate_verts[i].first %
 				duplicate_verts[i].second );
 		}

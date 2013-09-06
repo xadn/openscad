@@ -56,8 +56,9 @@ DxfData *CGAL_Nef_polyhedron::convertToDxfData() const
 			if (E.is_standard(E.target(fcirc))) {
 				Explorer::Point ep = E.point(E.target(fcirc));
 				double x = to_double(ep.x()), y = to_double(ep.y());
-				int this_point = -1;
-				if (grid.has(x, y)) {
+//				int this_point = -1;
+				dxfdata->addPathPoint( first_point, last_point, x, y, grid );
+/*				if (grid.has(x, y)) {
 					this_point = grid.align(x, y);
 				} else {
 					this_point = grid.align(x, y) = dxfdata->points.size();
@@ -71,7 +72,8 @@ DxfData *CGAL_Nef_polyhedron::convertToDxfData() const
 					dxfdata->paths.back().indices.push_back(this_point);
 					last_point = this_point;
 				}
-			}
+*/
+			 }
 		}
 		if (first_point >= 0) {
 			dxfdata->paths.back().is_closed = 1;

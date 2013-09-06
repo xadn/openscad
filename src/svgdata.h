@@ -121,7 +121,8 @@ private:
   void add_arc_points(float xc, float yc, float rx, float ry, float start, float end);
 
   void parse_path_description(std::string d);
-  std::vector<float> get_params(std::string str);
+  std::vector<float> get_path_params(std::string str);
+  std::vector<float> get_path_arc_params(std::string str);
   void render_rect(float x, float y, float width, float height, float rx, float ry);
   void render_line_to(float x0, float y0, float x1, float y1);
   void render_quadratic_curve_to(float x0, float y0, float x1, float y1, float x2, float y2);

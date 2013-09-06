@@ -3,6 +3,7 @@
 
 #include "linalg.h"
 #include <vector>
+#include "grid.h"
 
 class DxfData
 {
@@ -42,6 +43,7 @@ public:
 					double xorigin = 0.0, double yorigin = 0.0, double scale = 1.0);
 
 	int addPoint(double x, double y);
+	int addPathPoint(int &first_point, int &last_point, double x, double y, Grid2d<int> &grid);
 
 	void fixup_path_direction();
 	std::string dump() const;

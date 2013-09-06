@@ -558,6 +558,27 @@ int DxfData::addPoint(double x, double y)
 	return this->points.size()-1;
 }
 
+// add a vertex when path issues are involved. modifies first_point, last_point
+int DxfData::addPathPoint(int &first_point, int &last_point, double x, double y, Grid2d<int> &grid)
+{
+	int this_point = -1;
+	if (grid.has(x, y)) {
+		this_point = grid.align(x, y);
+	} else {
+		this_point = grid.align(x, y) = this->points.size();
+		this->points.push_back(Vector2d(x, y));
+	}
+	if (first_point < 0) {
+		this->paths.push_back(DxfData::Path());
+		first_point = this_point;
+	}
+	if (this_point != last_point) {
+		this->paths.back().indices.push_back(this_point);
+		last_point = this_point;
+	}
+	return this->points.size()-1;
+}
+
 std::string DxfData::dump() const
 {
 	std::stringstream out;
