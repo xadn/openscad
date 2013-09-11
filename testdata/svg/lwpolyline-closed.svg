@@ -99,7 +99,7 @@
      id="g21">
     <path
        d="M 177.165354,875.196850 L 0.000000,1052.362205 L 0.000000,875.196850 L 177.165354,875.196850 z"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
+       style="stroke:#000000;fill:gray;stroke-linecap: round"
        id="path23" />
   </g>
 </svg>

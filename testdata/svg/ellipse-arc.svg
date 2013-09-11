@@ -98,12 +98,9 @@
      inkscape:label="0"
      id="g21">
     <path
-       d="M 354.330709,1052.362205 A 354.330709,177.165354 -0.000000 0 0 0.000000,875.196850"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path23" />
-    <path
-       d="M 0.000000,875.196850 354.330709,1052.362205"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
+       d="M 354.330709,1052.362205 A 354.330709,177.165354 -0.000000 0 0 0.000000,875.196850
+       M 0.000000,875.196850 354.330709,1052.362205"
+       style="stroke:#000000;fill:black;stroke-linecap: round"
        id="path25" />
   </g>
 </svg>

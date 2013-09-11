@@ -33,6 +33,7 @@
 
 #include <rapidxml.hpp>
 #include <rapidxml_utils.hpp>
+#include <Eigen/Core>
 
 class TransformMatrix {
 public:
@@ -105,6 +106,8 @@ public:
 private:
   float a, b, c, d, e, f;
 };
+
+#define Point Eigen::Vector2f
 
 class SVGData{
 public:

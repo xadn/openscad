@@ -98,72 +98,24 @@
      inkscape:label="0"
      id="g21">
     <path
-       d="M 0.000000,1052.362205 0.000000,875.196850"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path23" />
-    <path
-       d="M 0.000000,875.196850 177.165354,875.196850"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path25" />
-    <path
-       d="M 177.165354,875.196850 177.165354,698.031496"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path27" />
-    <path
-       d="M 177.165354,698.031496 354.330709,698.031496"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path29" />
-    <path
-       d="M 354.330709,698.031496 248.031496,768.897638"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path31" />
-    <path
-       d="M 248.031496,768.897638 248.031496,875.196850"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path33" />
-    <path
-       d="M 248.031496,875.196850 212.598425,910.629921"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path35" />
-    <path
-       d="M 212.598425,910.629921 177.165354,910.629921"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path37" />
-    <path
-       d="M 177.165354,910.629921 177.165354,1052.362205"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path39" />
-    <path
-       d="M 177.165354,1052.362205 70.866142,1052.362205"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path41" />
-    <path
-       d="M 70.866142,1052.362205 70.866142,1016.929134"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path43" />
-    <path
-       d="M 70.866142,1016.929134 141.732283,1016.929134"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path45" />
-    <path
-       d="M 141.732283,1016.929134 141.732283,910.629921"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path47" />
-    <path
-       d="M 141.732283,910.629921 35.433071,910.629921"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path49" />
-    <path
-       d="M 35.433071,910.629921 35.433071,1052.362205"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path51" />
-    <path
-       d="M 35.433071,1052.362205 0.000000,1052.362205"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path53" />
-    <path
-       d="M 0.000000,1052.362205 0.000000,1052.362205"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
+       d="M 0.000000,1052.362205 L 0.000000,875.196850
+       L 0.000000,875.196850 177.165354,875.196850
+       L 177.165354,875.196850 177.165354,698.031496
+       L 177.165354,698.031496 354.330709,698.031496
+       L 354.330709,698.031496 248.031496,768.897638
+       L 248.031496,768.897638 248.031496,875.19685
+       L 248.031496,875.196850 212.598425,910.629921
+       L 212.598425,910.629921 177.165354,910.629921
+       L 177.165354,910.629921 177.165354,1052.362205
+       L 177.165354,1052.362205 70.866142,1052.362205
+       L 70.866142,1052.362205 70.866142,1016.929134
+       L 70.866142,1016.929134 141.732283,1016.929134
+       L 141.732283,1016.929134 141.732283,910.629921
+       L 141.732283,910.629921 35.433071,910.629921
+       L 35.433071,910.629921 35.433071,1052.362205
+       L 35.433071,1052.362205 0.000000,1052.362205
+       L 0.000000,1052.362205 0.000000,1052.362205"
+       style="stroke:#000000;fill:purple;stroke-linecap: round"
        id="path55" />
   </g>
 </svg>
