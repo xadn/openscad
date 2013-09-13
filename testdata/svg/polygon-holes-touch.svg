@@ -12,7 +12,7 @@
    id="svg2"
    version="1.1"
    inkscape:version="0.48.4 r9939"
-   sodipodi:docname="polygon-holes-touch.dxf">
+   sodipodi:docname="polygon-holes-touch.svg">
   <metadata
      id="metadata37">
     <rdf:RDF>
@@ -21,7 +21,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -38,9 +38,9 @@
      inkscape:window-height="480"
      id="namedview35"
      showgrid="false"
-     inkscape:zoom="0.22425739"
-     inkscape:cx="372.04724"
-     inkscape:cy="526.18109"
+     inkscape:zoom="1.7940591"
+     inkscape:cx="-8.4436931"
+     inkscape:cy="264.95704"
      inkscape:window-x="0"
      inkscape:window-y="24"
      inkscape:window-maximized="0"
@@ -48,78 +48,16 @@
   <desc
      id="desc4">/home/don/openscad/testdata/svg/polygon-holes-touch.dxf - scale = 1.000000</desc>
   <defs
-     id="defs6">
-    <marker
-       id="DistanceX"
-       orient="auto"
-       refX="0.0"
-       refY="0.0"
-       style="overflow:visible">
-      <path
-         d="M 3,-3 L -3,3 M 0,-5 L  0,5"
-         style="stroke:#000000; stroke-width:0.5"
-         id="path9" />
-    </marker>
-    <pattern
-       height="8"
-       id="Hatch"
-       patternUnits="userSpaceOnUse"
-       width="8"
-       x="0"
-       y="0">
-      <path
-         d="M8 4 l-4,4"
-         linecap="square"
-         stroke="#000000"
-         stroke-width="0.25"
-         id="path12" />
-      <path
-         d="M6 2 l-4,4"
-         linecap="square"
-         stroke="#000000"
-         stroke-width="0.25"
-         id="path14" />
-      <path
-         d="M4 0 l-4,4"
-         linecap="square"
-         stroke="#000000"
-         stroke-width="0.25"
-         id="path16" />
-    </pattern>
-    <symbol
-       id="*Model_Space" />
-    <symbol
-       id="*Paper_Space" />
-    <symbol
-       id="*Paper_Space0" />
-  </defs>
+     id="defs6" />
   <g
      inkscape:groupmode="layer"
      inkscape:label="0"
      id="g21">
     <path
-       d="M 106.299213,882.283465 106.299213,740.551181"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path23" />
-    <path
-       d="M 106.299213,740.551181 -70.866142,740.551181"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path25" />
-    <path
-       d="M -70.866142,882.283465 106.299213,882.283465"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path27" />
-    <path
-       d="M -70.866142,740.551181 -70.866142,882.283465"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path29" />
-    <path
-       d="M 44.291339,829.133858 A 26.574803,26.574803 -0.000000 1 0 -8.858268,829.133858 26.574803,26.574803 -0.000000 1 0 44.291339,829.133858 z"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path31" />
-    <path
-       d="M 44.291339,775.984252 A 26.574803,26.574803 -0.000000 1 0 -8.858268,775.984252 26.574803,26.574803 -0.000000 1 0 44.291339,775.984252 z"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path33" />
+       style="fill:#008000;stroke:#000000;stroke-linecap:round"
+       d="m 106.29921,740.55118 0,0 -177.165352,0 0,141.73228 177.165352,0 z
+       M 44.291339,829.13386 a 26.574804,26.574804 0 1 0 -53.149607,0 26.574804,26.574804 0 0 0 53.149607,0 z
+       M 44.291339,775.98425 a 26.574804,26.574804 0 1 0 -53.149607,0 26.574804,26.574804 0 0 0 53.149607,0 z"
+       fill-rule="evenodd" />
   </g>
 </svg>

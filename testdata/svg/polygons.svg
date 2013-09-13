@@ -12,7 +12,7 @@
    id="svg2"
    version="1.1"
    inkscape:version="0.48.4 r9939"
-   sodipodi:docname="polygons.dxf">
+   sodipodi:docname="polygons.svg">
   <metadata
      id="metadata45">
     <rdf:RDF>
@@ -21,7 +21,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -34,108 +34,28 @@
      guidetolerance="10"
      inkscape:pageopacity="0"
      inkscape:pageshadow="2"
-     inkscape:window-width="640"
-     inkscape:window-height="480"
+     inkscape:window-width="1366"
+     inkscape:window-height="744"
      id="namedview43"
      showgrid="false"
-     inkscape:zoom="0.22425739"
-     inkscape:cx="372.04724"
-     inkscape:cy="526.18109"
+     inkscape:zoom="0.31714785"
+     inkscape:cx="50.463018"
+     inkscape:cy="252.95737"
      inkscape:window-x="0"
      inkscape:window-y="24"
-     inkscape:window-maximized="0"
+     inkscape:window-maximized="1"
      inkscape:current-layer="g21" />
   <desc
      id="desc4">/home/don/openscad/testdata/svg/polygons.dxf - scale = 1.000000</desc>
   <defs
-     id="defs6">
-    <marker
-       id="DistanceX"
-       orient="auto"
-       refX="0.0"
-       refY="0.0"
-       style="overflow:visible">
-      <path
-         d="M 3,-3 L -3,3 M 0,-5 L  0,5"
-         style="stroke:#000000; stroke-width:0.5"
-         id="path9" />
-    </marker>
-    <pattern
-       height="8"
-       id="Hatch"
-       patternUnits="userSpaceOnUse"
-       width="8"
-       x="0"
-       y="0">
-      <path
-         d="M8 4 l-4,4"
-         linecap="square"
-         stroke="#000000"
-         stroke-width="0.25"
-         id="path12" />
-      <path
-         d="M6 2 l-4,4"
-         linecap="square"
-         stroke="#000000"
-         stroke-width="0.25"
-         id="path14" />
-      <path
-         d="M4 0 l-4,4"
-         linecap="square"
-         stroke="#000000"
-         stroke-width="0.25"
-         id="path16" />
-    </pattern>
-    <symbol
-       id="*Model_Space" />
-    <symbol
-       id="*Paper_Space" />
-    <symbol
-       id="*Paper_Space0" />
-  </defs>
+     id="defs6" />
   <g
      inkscape:groupmode="layer"
      inkscape:label="0"
      id="g21">
     <path
-       d="M 0.000000,1052.362205 177.165354,1052.362205"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path23" />
-    <path
-       d="M 177.165354,1052.362205 177.165354,875.196850"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path25" />
-    <path
-       d="M 177.165354,875.196850 354.330709,875.196850"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path27" />
-    <path
-       d="M 354.330709,875.196850 354.330709,698.031496"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path29" />
-    <path
-       d="M 354.330709,698.031496 0.000000,698.031496"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path31" />
-    <path
-       d="M 0.000000,698.031496 0.000000,1052.362205"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path33" />
-    <path
-       d="M 212.598425,910.629921 354.330709,910.629921"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path35" />
-    <path
-       d="M 354.330709,910.629921 354.330709,1052.362205"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path37" />
-    <path
-       d="M 354.330709,1052.362205 212.598425,1052.362205"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
-       id="path39" />
-    <path
-       d="M 212.598425,1052.362205 212.598425,910.629921"
-       style="stroke:#000000;fill:none;stroke-linecap: round"
+       d="M 0.000000,1052.362205 177.165354,1052.362205        L 177.165354,1052.362205 177.165354,875.196850        L 177.165354,875.196850 354.330709,875.196850        L 354.330709,875.196850 354.330709,698.031496        L 354.330709,698.031496 0.000000,698.031496        L 0.000000,698.031496 0.000000,1052.362205        M 212.598425,910.629921 354.330709,910.629921        L 354.330709,910.629921 354.330709,1052.362205        L 354.330709,1052.362205 212.598425,1052.362205        L 212.598425,1052.362205 212.598425,910.629921 z"
+       style="stroke:#000000;fill:#008000;stroke-linecap:round"
        id="path41" />
   </g>
 </svg>

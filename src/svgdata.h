@@ -107,7 +107,6 @@ private:
   float a, b, c, d, e, f;
 };
 
-#define Point Eigen::Vector2f
 
 class SVGData{
 public:

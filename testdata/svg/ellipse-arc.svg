@@ -12,7 +12,7 @@
    id="svg2"
    version="1.1"
    inkscape:version="0.48.4 r9939"
-   sodipodi:docname="ellipse-arc.dxf">
+   sodipodi:docname="ellipse-arc.svg">
   <metadata
      id="metadata29">
     <rdf:RDF>
@@ -21,7 +21,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -48,58 +48,13 @@
   <desc
      id="desc4">/home/don/openscad/testdata/svg/ellipse-arc.dxf - scale = 1.000000</desc>
   <defs
-     id="defs6">
-    <marker
-       id="DistanceX"
-       orient="auto"
-       refX="0.0"
-       refY="0.0"
-       style="overflow:visible">
-      <path
-         d="M 3,-3 L -3,3 M 0,-5 L  0,5"
-         style="stroke:#000000; stroke-width:0.5"
-         id="path9" />
-    </marker>
-    <pattern
-       height="8"
-       id="Hatch"
-       patternUnits="userSpaceOnUse"
-       width="8"
-       x="0"
-       y="0">
-      <path
-         d="M8 4 l-4,4"
-         linecap="square"
-         stroke="#000000"
-         stroke-width="0.25"
-         id="path12" />
-      <path
-         d="M6 2 l-4,4"
-         linecap="square"
-         stroke="#000000"
-         stroke-width="0.25"
-         id="path14" />
-      <path
-         d="M4 0 l-4,4"
-         linecap="square"
-         stroke="#000000"
-         stroke-width="0.25"
-         id="path16" />
-    </pattern>
-    <symbol
-       id="*Model_Space" />
-    <symbol
-       id="*Paper_Space" />
-    <symbol
-       id="*Paper_Space0" />
-  </defs>
+     id="defs6" />
   <g
      inkscape:groupmode="layer"
      inkscape:label="0"
      id="g21">
     <path
-       d="M 354.330709,1052.362205 A 354.330709,177.165354 -0.000000 0 0 0.000000,875.196850
-       M 0.000000,875.196850 354.330709,1052.362205"
+       d="M 354.330709,1052.362205 A 354.330709,177.165354 -0.000000 0 0 0.000000,875.196850        M 0.000000,875.196850 354.330709,1052.362205"
        style="stroke:#000000;fill:black;stroke-linecap: round"
        id="path25" />
   </g>
