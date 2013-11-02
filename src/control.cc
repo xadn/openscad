@@ -24,96 +24,227 @@
  *
  */
 
+#include <boost/foreach.hpp>
 #include "module.h"
 #include "node.h"
-#include "context.h"
+#include "evalcontext.h"
+#include "modcontext.h"
 #include "builtin.h"
 #include "printutils.h"
 #include <sstream>
+#include "mathc99.h"
 
-enum control_type_e {
-	CHILD,
-	ECHO,
-	ASSIGN,
-	FOR,
-	INT_FOR,
-	IF
-};
+
+#define foreach BOOST_FOREACH
+
 
 class ControlModule : public AbstractModule
 {
-public:
-	control_type_e type;
-	ControlModule(control_type_e type) : type(type) { }
-	virtual AbstractNode *evaluate(const Context *ctx, const ModuleInstantiation *inst) const;
-};
+public: // types
+	enum Type {
+		CHILD,
+		CHILDREN,
+		ECHO,
+		ASSIGN,
+		FOR,
+		INT_FOR,
+		IF
+    };
+public: // methods
+	ControlModule(Type type)
+		: type(type)
+	{ }
 
-void for_eval(AbstractNode &node, const ModuleInstantiation &inst, size_t l, 
-							const std::vector<std::string> &call_argnames, 
-							const std::vector<Value> &call_argvalues, 
-							const Context *arg_context)
+	virtual AbstractNode *instantiate(const Context *ctx, const ModuleInstantiation *inst, const EvalContext *evalctx) const;
+
+	static void for_eval(AbstractNode &node, const ModuleInstantiation &inst, size_t l, 
+						 const Context *ctx, const EvalContext *evalctx);
+
+	static const EvalContext* getLastModuleCtx(const EvalContext *evalctx);
+	
+	static AbstractNode* getChild(const Value& value, const EvalContext* modulectx);
+
+private: // data
+	Type type;
+
+}; // class ControlModule
+
+void ControlModule::for_eval(AbstractNode &node, const ModuleInstantiation &inst, size_t l, 
+							const Context *ctx, const EvalContext *evalctx)
 {
-	if (call_argnames.size() > l) {
-		const std::string &it_name = call_argnames[l];
-		const Value &it_values = call_argvalues[l];
-		Context c(arg_context);
+	if (evalctx->numArgs() > l) {
+		const std::string &it_name = evalctx->getArgName(l);
+		const Value &it_values = evalctx->getArgValue(l, ctx);
+		Context c(ctx);
 		if (it_values.type() == Value::RANGE) {
 			Value::RangeType range = it_values.toRange();
-			if (range.end < range.begin) {
-				double t = range.begin;
-				range.begin = range.end;
-				range.end = t;
-			}
-			if (range.step > 0 && (range.begin-range.end)/range.step < 10000) {
+			range.normalize();
+			if (range.nbsteps()<10000) {
 				for (double i = range.begin; i <= range.end; i += range.step) {
 					c.set_variable(it_name, Value(i));
-					for_eval(node, inst, l+1, call_argnames, call_argvalues, &c);
+					for_eval(node, inst, l+1, &c, evalctx);
 				}
 			}
 		}
 		else if (it_values.type() == Value::VECTOR) {
 			for (size_t i = 0; i < it_values.toVector().size(); i++) {
 				c.set_variable(it_name, it_values.toVector()[i]);
-				for_eval(node, inst, l+1, call_argnames, call_argvalues, &c);
+				for_eval(node, inst, l+1, &c, evalctx);
 			}
 		}
 		else if (it_values.type() != Value::UNDEFINED) {
 			c.set_variable(it_name, it_values);
-			for_eval(node, inst, l+1, call_argnames, call_argvalues, &c);
+			for_eval(node, inst, l+1, &c, evalctx);
 		}
 	} else if (l > 0) {
-		std::vector<AbstractNode *> evaluatednodes = inst.evaluateChildren(arg_context);
-		node.children.insert(node.children.end(), evaluatednodes.begin(), evaluatednodes.end());
+		std::vector<AbstractNode *> instantiatednodes = inst.instantiateChildren(ctx);
+		node.children.insert(node.children.end(), instantiatednodes.begin(), instantiatednodes.end());
 	}
 }
 
-AbstractNode *ControlModule::evaluate(const Context*, const ModuleInstantiation *inst) const
+const EvalContext* ControlModule::getLastModuleCtx(const EvalContext *evalctx)
+{
+	// Find the last custom module invocation, which will contain
+	// an eval context with the children of the module invokation
+	const Context *tmpc = evalctx;
+	while (tmpc->parent) {
+		const ModuleContext *modulectx = dynamic_cast<const ModuleContext*>(tmpc->parent);
+		if (modulectx) {
+			// This will trigger if trying to invoke child from the root of any file
+			// assert(filectx->evalctx);
+			if (modulectx->evalctx) {
+				return modulectx->evalctx;
+			}
+			return NULL;
+		}
+		tmpc = tmpc->parent;
+	}
+	return NULL;
+}
+
+// static
+AbstractNode* ControlModule::getChild(const Value& value, const EvalContext* modulectx)
+{
+	if (value.type()!=Value::NUMBER) {
+		// Invalid parameter
+		// (e.g. first child of difference is invalid)
+		PRINTB("WARNING: Bad parameter type (%s) for children, only accept: empty, number, vector, range.", value.toString());
+		return NULL;
+	}
+	double v;
+	if (!value.getDouble(v)) {
+		PRINTB("WARNING: Bad parameter type (%s) for children, only accept: empty, number, vector, range.", value.toString());
+		return NULL;
+	}
+		
+	int n = trunc(v);
+	if (n < 0) {
+		PRINTB("WARNING: Negative children index (%d) not allowed", n);
+		return NULL; // Disallow negative child indices
+	}
+	if (n>=(int)modulectx->numChildren()) {
+		// How to deal with negative objects in this case?
+		// (e.g. first child of difference is invalid)
+		PRINTB("WARNING: Children index (%d) out of bounds (%d children)"
+			, n % modulectx->numChildren());
+		return NULL;
+	}
+	// OK
+	return modulectx->getChild(n)->evaluate(modulectx);
+}
+
+AbstractNode *ControlModule::instantiate(const Context* /*ctx*/, const ModuleInstantiation *inst, const EvalContext *evalctx) const
 {
 	AbstractNode *node = NULL;
 
 	if (type == CHILD)
 	{
-		size_t n = 0;
-		if (inst->argvalues.size() > 0) {
+		int n = 0;
+		if (evalctx->numArgs() > 0) {
 			double v;
-			if (inst->argvalues[0].getDouble(v)) {
-				if (v < 0) return NULL; // Disallow negative child indices
+			if (evalctx->getArgValue(0).getDouble(v)) {
 				n = trunc(v);
+				if (n < 0) {
+					PRINTB("WARNING: Negative child index (%d) not allowed", n);
+					return NULL; // Disallow negative child indices
+				}
 			}
 		}
-		for (int i = Context::ctx_stack.size()-1; i >= 0; i--) {
-			const Context *c = Context::ctx_stack[i];
-			if (c->inst_p) {
-				if (n < c->inst_p->children.size()) {
-					node = c->inst_p->children[n]->evaluate(c->inst_p->ctx);
-					// FIXME: We'd like to inherit any tags from the ModuleInstantiation
-					// given as parameter to this method. However, the instantition which belongs
-					// to the returned node cannot be changed. This causes the test
-					// features/child-background.scad to fail.
+
+		// Find the last custom module invocation, which will contain
+		// an eval context with the children of the module invokation
+		const EvalContext *modulectx = getLastModuleCtx(evalctx);
+		if (modulectx==NULL) {
+			return NULL;
+		}
+		// This will trigger if trying to invoke child from the root of any file
+        if (n < (int)modulectx->numChildren()) {
+			node = modulectx->getChild(n)->evaluate(modulectx);
+		}
+		else {
+			// How to deal with negative objects in this case?
+            // (e.g. first child of difference is invalid)
+			PRINTB("WARNING: Child index (%d) out of bounds (%d children)", 
+				   n % modulectx->numChildren());
+		}
+		return node;
+	}
+
+	if (type == CHILDREN)
+	{
+		const EvalContext *modulectx = getLastModuleCtx(evalctx);
+		if (modulectx==NULL) {
+			return NULL;
+		}
+		// This will trigger if trying to invoke child from the root of any file
+		// assert(filectx->evalctx);
+		if (evalctx->numArgs()<=0) {
+			// no parameters => all children
+			AbstractNode* node = new AbstractNode(inst);
+			for (int n = 0; n < (int)modulectx->numChildren(); ++n) {
+				AbstractNode* childnode = modulectx->getChild(n)->evaluate(modulectx);
+				if (childnode==NULL) continue; // error
+				node->children.push_back(childnode);
+			}
+			return node;
+		}
+		else if (evalctx->numArgs()>0) {
+			// one (or more ignored) parameter
+			const Value& value = evalctx->getArgValue(0);
+			if (value.type() == Value::NUMBER) {
+				return getChild(value,modulectx);
+			}
+			else if (value.type() == Value::VECTOR) {
+				AbstractNode* node = new AbstractNode(inst);
+				const Value::VectorType& vect = value.toVector();
+				foreach (const Value::VectorType::value_type& vectvalue, vect) {
+					AbstractNode* childnode = getChild(vectvalue,modulectx);
+					if (childnode==NULL) continue; // error
+					node->children.push_back(childnode);
 				}
 				return node;
 			}
-			c = c->parent;
+			else if (value.type() == Value::RANGE) {
+				AbstractNode* node = new AbstractNode(inst);
+				Value::RangeType range = value.toRange();
+				range.normalize();
+				if (range.nbsteps()>=10000) {
+					PRINTB("WARNING: Bad range parameter for children: too many elements (%d).", (int)((range.begin-range.end)/range.step));
+					return NULL;
+				}
+				for (double i = range.begin; i <= range.end; i += range.step) {
+					AbstractNode* childnode = getChild(Value(i),modulectx); // with error cases
+					if (childnode==NULL) continue; // error
+					node->children.push_back(childnode);
+				}
+				return node;
+			}
+			else {
+				// Invalid parameter
+				// (e.g. first child of difference is invalid)
+				PRINTB("WARNING: Bad parameter type (%s) for children, only accept: empty, number, vector, range.", value.toString());
+				return NULL;
+			}
 		}
 		return NULL;
 	}
@@ -127,40 +258,40 @@ AbstractNode *ControlModule::evaluate(const Context*, const ModuleInstantiation 
 	{
 		std::stringstream msg;
 		msg << "ECHO: ";
-		for (size_t i = 0; i < inst->argnames.size(); i++) {
+		for (size_t i = 0; i < inst->arguments.size(); i++) {
 			if (i > 0) msg << ", ";
-			if (!inst->argnames[i].empty()) msg << inst->argnames[i] << " = ";
-			msg << inst->argvalues[i];
+			if (!evalctx->getArgName(i).empty()) msg << evalctx->getArgName(i) << " = ";
+			msg << evalctx->getArgValue(i);
 		}
 		PRINTB("%s", msg.str());
 	}
 
 	if (type == ASSIGN)
 	{
-		Context c(inst->ctx);
-		for (size_t i = 0; i < inst->argnames.size(); i++) {
-			if (!inst->argnames[i].empty())
-				c.set_variable(inst->argnames[i], inst->argvalues[i]);
+		Context c(evalctx);
+		for (size_t i = 0; i < evalctx->numArgs(); i++) {
+			if (!evalctx->getArgName(i).empty())
+				c.set_variable(evalctx->getArgName(i), evalctx->getArgValue(i));
 		}
-		std::vector<AbstractNode *> evaluatednodes = inst->evaluateChildren(&c);
-		node->children.insert(node->children.end(), evaluatednodes.begin(), evaluatednodes.end());
+		std::vector<AbstractNode *> instantiatednodes = inst->instantiateChildren(&c);
+		node->children.insert(node->children.end(), instantiatednodes.begin(), instantiatednodes.end());
 	}
 
 	if (type == FOR || type == INT_FOR)
 	{
-		for_eval(*node, *inst, 0, inst->argnames, inst->argvalues, inst->ctx);
+		for_eval(*node, *inst, 0, evalctx, evalctx);
 	}
 
 	if (type == IF)
 	{
 		const IfElseModuleInstantiation *ifelse = dynamic_cast<const IfElseModuleInstantiation*>(inst);
-		if (ifelse->argvalues.size() > 0 && ifelse->argvalues[0].toBool()) {
-			std::vector<AbstractNode *> evaluatednodes = ifelse->evaluateChildren();
-			node->children.insert(node->children.end(), evaluatednodes.begin(), evaluatednodes.end());
+		if (evalctx->numArgs() > 0 && evalctx->getArgValue(0).toBool()) {
+			std::vector<AbstractNode *> instantiatednodes = ifelse->instantiateChildren(evalctx);
+			node->children.insert(node->children.end(), instantiatednodes.begin(), instantiatednodes.end());
 		}
 		else {
-			std::vector<AbstractNode *> evaluatednodes = ifelse->evaluateElseChildren();
-			node->children.insert(node->children.end(), evaluatednodes.begin(), evaluatednodes.end());
+			std::vector<AbstractNode *> instantiatednodes = ifelse->instantiateElseChildren(evalctx);
+			node->children.insert(node->children.end(), instantiatednodes.begin(), instantiatednodes.end());
 		}
 	}
 
@@ -169,10 +300,11 @@ AbstractNode *ControlModule::evaluate(const Context*, const ModuleInstantiation 
 
 void register_builtin_control()
 {
-	Builtins::init("child", new ControlModule(CHILD));
-	Builtins::init("echo", new ControlModule(ECHO));
-	Builtins::init("assign", new ControlModule(ASSIGN));
-	Builtins::init("for", new ControlModule(FOR));
-	Builtins::init("intersection_for", new ControlModule(INT_FOR));
-	Builtins::init("if", new ControlModule(IF));
+	Builtins::init("child", new ControlModule(ControlModule::CHILD));
+	Builtins::init("children", new ControlModule(ControlModule::CHILDREN));
+	Builtins::init("echo", new ControlModule(ControlModule::ECHO));
+	Builtins::init("assign", new ControlModule(ControlModule::ASSIGN));
+	Builtins::init("for", new ControlModule(ControlModule::FOR));
+	Builtins::init("intersection_for", new ControlModule(ControlModule::INT_FOR));
+	Builtins::init("if", new ControlModule(ControlModule::IF));
 }

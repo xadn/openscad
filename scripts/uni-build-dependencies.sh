@@ -53,6 +53,16 @@ printUsage()
   echo
 }
 
+detect_glu()
+{
+  detect_glu_result=
+  if [ -e $DEPLOYDIR/include/GL/glu.h ]; then detect_glu_result=1; fi
+  if [ -e /usr/include/GL/glu.h ]; then detect_glu_result=1; fi
+  if [ -e /usr/local/include/GL/glu.h ]; then detect_glu_result=1; fi
+  if [ -e /usr/pkg/X11R7/include/GL/glu.h ]; then detect_glu_result=1; fi
+  return
+}
+
 build_glu()
 {
   version=$1
@@ -282,6 +292,7 @@ build_cgal()
   echo "Building CGAL" $version "..."
   cd $BASEDIR/src
   rm -rf CGAL-$version
+  ver4_2="curl --insecure -O https://gforge.inria.fr/frs/download.php/32360/CGAL-4.2.tar.bz2"
   ver4_1="curl --insecure -O https://gforge.inria.fr/frs/download.php/31640/CGAL-4.1.tar.bz2"
   ver4_0_2="curl --insecure -O https://gforge.inria.fr/frs/download.php/31174/CGAL-4.0.2.tar.bz2"
   ver4_0="curl --insecure -O https://gforge.inria.fr/frs/download.php/30387/CGAL-4.0.tar.gz"
@@ -289,12 +300,28 @@ build_cgal()
   ver3_8="curl --insecure -O https://gforge.inria.fr/frs/download.php/28500/CGAL-3.8.tar.gz"
   ver3_7="curl --insecure -O https://gforge.inria.fr/frs/download.php/27641/CGAL-3.7.tar.gz"
   vernull="echo already downloaded..skipping"
-  download_cmd=ver`echo $version | sed s/"\."/"_"/`
-  if [ -e CGAL-$version.tar.gz ]; then download_cmd=vernull; fi
-  if [ -e CGAL-$version.tar.bz2 ]; then download_cmd=vernull; fi
+  download_cmd=ver`echo $version | sed s/"\."/"_"/ | sed s/"\."/"_"/`
+
+  if [ -e CGAL-$version.tar.gz ]; then
+    download_cmd=vernull;
+  fi
+  if [ -e CGAL-$version.tar.bz2 ]; then
+    download_cmd=vernull;
+  fi
+
+  eval echo "$"$download_cmd
   `eval echo "$"$download_cmd`
-  if [ -e CGAL-$version.tar.gz ]; then tar xf CGAL-$version.tar.gz; fi
-  if [ -e CGAL-$version.tar.bz2 ]; then tar xf CGAL-$version.tar.bz2; fi
+
+  zipper=gzip
+  suffix=gz
+  if [ -e CGAL-$version.tar.bz2 ]; then
+    zipper=bzip2
+    suffix=bz2
+  fi
+
+  $zipper -f -d CGAL-$version.tar.$suffix;
+  tar xf CGAL-$version.tar
+
   cd CGAL-$version
 
   # older cmakes have buggy FindBoost that can result in
@@ -316,7 +343,7 @@ build_cgal()
   if [ "`echo $2 | grep use-sys-libs`" ]; then
     cmake -DCMAKE_INSTALL_PREFIX=$DEPLOYDIR -DWITH_CGAL_Qt3=OFF -DWITH_CGAL_Qt4=OFF -DWITH_CGAL_ImageIO=OFF -DCMAKE_BUILD_TYPE=$CGAL_BUILDTYPE -DBoost_DEBUG=$DEBUGBOOSTFIND ..
   else
-    cmake -DCMAKE_INSTALL_PREFIX=$DEPLOYDIR -DGMP_INCLUDE_DIR=$DEPLOYDIR/include -DGMP_LIBRARIES=$DEPLOYDIR/lib/libgmp.so -DGMPXX_LIBRARIES=$DEPLOYDIR/lib/libgmpxx.so -DGMPXX_INCLUDE_DIR=$DEPLOYDIR/include -DMPFR_INCLUDE_DIR=$DEPLOYDIR/include -DMPFR_LIBRARIES=$DEPLOYDIR/lib/libmpfr.so -DWITH_CGAL_Qt3=OFF -DWITH_CGAL_Qt4=OFF -DWITH_CGAL_ImageIO=OFF -DBOOST_LIBRARYDIR=$DEPLOYDIR/lib -DBOOST_INCLUDEDIR=$DEPLOYDIR/include -DCMAKE_BUILD_TYPE=$CGAL_BUILD_TYPE -DBoost_DEBUG=$DEBUGBOOSTFIND -DBoost_NO_SYSTEM_PATHS=1 ..
+    cmake -DCMAKE_INSTALL_PREFIX=$DEPLOYDIR -DGMP_INCLUDE_DIR=$DEPLOYDIR/include -DGMP_LIBRARIES=$DEPLOYDIR/lib/libgmp.so -DGMPXX_LIBRARIES=$DEPLOYDIR/lib/libgmpxx.so -DGMPXX_INCLUDE_DIR=$DEPLOYDIR/include -DMPFR_INCLUDE_DIR=$DEPLOYDIR/include -DMPFR_LIBRARIES=$DEPLOYDIR/lib/libmpfr.so -DWITH_CGAL_Qt3=OFF -DWITH_CGAL_Qt4=OFF -DWITH_CGAL_ImageIO=OFF -DBOOST_LIBRARYDIR=$DEPLOYDIR/lib -DBOOST_INCLUDEDIR=$DEPLOYDIR/include -DCMAKE_BUILD_TYPE=$CGAL_BUILDTYPE -DBoost_DEBUG=$DEBUGBOOSTFIND -DBoost_NO_SYSTEM_PATHS=1 ..
   fi
   make -j$NUMCPU
   make install
@@ -408,8 +435,22 @@ build_opencsg()
     OPENCSG_QMAKE=qmake-qt4
   elif [ "`command -v qmake4`" ]; then
     OPENCSG_QMAKE=qmake4
-  else
+  elif [ "`command -v qmake`" ]; then
     OPENCSG_QMAKE=qmake
+  else
+    echo qmake not found... using standard OpenCSG makefiles
+    OPENCSG_QMAKE=make
+    cp Makefile Makefile.bak
+    cp src/Makefile src/Makefile.bak
+
+    cat Makefile.bak | sed s/example// |sed s/glew// > Makefile
+    cat src/Makefile.bak | sed s@^INCPATH.*@INCPATH\ =\ -I$BASEDIR/include\ -I../include\ -I..\ -I.@ > src/Makefile
+    cp src/Makefile src/Makefile.bak2
+    cat src/Makefile.bak2 | sed s@^LIBS.*@LIBS\ =\ -L$BASEDIR/lib\ -L/usr/X11R6/lib\ -lGLU\ -lGL@ > src/Makefile
+    tmp=$version
+    detect_glu
+    if [ ! $detect_glu_result ]; then build_glu 9.0.0 ; fi
+    version=$tmp
   fi
 
   cd $BASEDIR/src/OpenCSG-$version/src
@@ -535,7 +576,7 @@ if [ $1 ]; then
     exit $?
   fi
   if [ $1 = "cgal" ]; then
-    build_cgal 4.1 use-sys-libs
+    build_cgal 4.0.2 use-sys-libs
     exit $?
   fi
   if [ $1 = "opencsg" ]; then
@@ -555,6 +596,8 @@ if [ $1 ]; then
 fi
 
 
+# todo - cgal 4.02 for gcc<4.7, gcc 4.2 for above
+
 #
 # Main build of libraries
 # edit version numbers here as needed.
@@ -562,9 +605,13 @@ fi
 build_eigen 3.1.1
 build_gmp 5.0.5
 build_mpfr 3.1.1
+<<<<<<< HEAD
 build_boost 1.52.0
+=======
+build_boost 1.53.0
+>>>>>>> integrate
 # NB! For CGAL, also update the actual download URL in the function
-build_cgal 4.1
+build_cgal 4.0.2
 build_glew 1.9.0
 build_opencsg 1.3.2
 

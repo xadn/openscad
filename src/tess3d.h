@@ -3,12 +3,14 @@
 
 #include "cgal.h"
 
+namespace OpenSCAD {
+
 typedef enum tessellation_e {
-	NO_TESSELLATION,
-	CGAL_NEF_STANDARD, // internal to CGAL's Nef->Polyhedron converter
-	CONSTRAINED_DELAUNAY_TRIANGULATION,
-	STRAIGHT_SKELETON
-} Tessellation;
+	TESS_NONE,
+	TESS_CGAL_NEF_STANDARD, // internal to CGAL's Nef->Polyhedron converter
+	TESS_CONSTRAINED_DELAUNAY_TRIANGULATION,
+	TESS_STRAIGHT_SKELETON
+} tessellation;
 
 typedef enum tessellater_status_e {
         TESSELLATER_OK,
@@ -37,6 +39,8 @@ typedef enum tessellater_status_e {
 tessellater_status tessellate(
         std::vector<CGAL_Polygon_3> &input_pgon3d,
         std::vector<CGAL_Polygon_3> &output_pgons3d,
-        Tessellation tesstype );
+        tessellation tesstype );
+
+} // namespace OpenSCAD
 
 #endif

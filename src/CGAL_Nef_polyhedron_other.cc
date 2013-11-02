@@ -5,6 +5,8 @@
 #include "CGAL_Nef_polyhedron.h"
 #include "tess3d.h"
 
+using namespace OpenSCAD;
+
 // this class helps build a Polyhedron from a Nef Polyhedron
 // See the Polyhedron Builder cgal manual, as well as cgalutils.cc
 // CGAL_Build_Polyset.
@@ -90,11 +92,11 @@ void Builder::operator()(CGAL_HDS& hds)
    Faces-without-holes can be tessellated separately from faces-with-holes.
 */
 void CGAL_Nef_polyhedron::convertToPolyhedron( CGAL_Polyhedron &P,
-	Tessellation faces_tess, Tessellation faces_with_holes_tess ) const
+	tessellation faces_tess, tessellation faces_with_holes_tess ) const
 {
 	std::cout << "convert " << faces_tess << " " << faces_with_holes_tess << "\n";
 	assert(dim==3);
-	if (faces_tess == CGAL_NEF_STANDARD && faces_with_holes_tess == CGAL_NEF_STANDARD ) {
+	if (faces_tess == TESS_CGAL_NEF_STANDARD && faces_with_holes_tess == TESS_CGAL_NEF_STANDARD ) {
   	 	this->p3->convert_to_Polyhedron( P );
 	}
 	else {

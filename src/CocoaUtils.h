@@ -7,7 +7,7 @@ class CocoaUtils
 {
 public:
 	static void endApplication();
-	static std::string documentsPath();
+  static void nslog(const std::string &str, void *userdata);
 };
 
 #endif

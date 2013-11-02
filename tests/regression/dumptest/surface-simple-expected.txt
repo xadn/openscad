@@ -1,2 +1,0 @@
-	surface(file = "surface-simple.dat", center = true);
-

@@ -1,5 +1,7 @@
 #include "tess3d.h"
 
+using namespace OpenSCAD;
+
 #include <CGAL/Constrained_Delaunay_triangulation_2.h>
 #include <CGAL/Delaunay_mesher_2.h>
 #include <CGAL/Delaunay_mesh_face_base_2.h>
@@ -219,8 +221,7 @@ tessellater_status tessellate(
 	// a light on it from up, then from the back, and then from the side.
 	// imagine the 'shadows' of that normal hit the xy plane, yz plane,
 	// or xz plane. the "smallest" shadow tells us which 2d plane we want
-	// to project our polygon onto, xy, yz, or xz. shadowsize comes from
-	// the pythagorean theorem without sqrt ( the Quadrance )
+	// to project our polygon onto, xy, yz, or xz.
 
 	debug << "finding three non-collinear points, to find normal";
 	if (pgons[0].size()<3) return BODY_LACKS_POINTS;

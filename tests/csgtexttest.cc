@@ -31,7 +31,7 @@
 #include "parsersettings.h"
 #include "node.h"
 #include "module.h"
-#include "context.h"
+#include "modcontext.h"
 #include "value.h"
 #include "export.h"
 #include "builtin.h"
@@ -77,14 +77,14 @@ int main(int argc, char **argv)
 
 	currentdir = boosty::stringy( fs::current_path() );
 
-	parser_init(boosty::stringy(fs::path(argv[0]).branch_path()));
+	parser_init(boosty::stringy(fs::path(argv[0]).branch_path()), false);
 	add_librarydir(boosty::stringy(fs::path(argv[0]).branch_path() / "../libraries"));
 
-	Context root_ctx;
-	register_builtin(root_ctx);
+	ModuleContext top_ctx;
+	top_ctx.registerBuiltin();
 
-	AbstractModule *root_module;
-	ModuleInstantiation root_inst;
+	FileModule *root_module;
+	ModuleInstantiation root_inst("group");
 	AbstractNode *root_node;
 
 	root_module = parsefile(filename);
@@ -97,7 +97,7 @@ int main(int argc, char **argv)
 	}
 
 	AbstractNode::resetIndexCounter();
-	root_node = root_module->evaluate(&root_ctx, &root_inst);
+	root_node = root_module->instantiate(&top_ctx, &root_inst);
 
 	Tree tree;
 	tree.setRoot(root_node);
