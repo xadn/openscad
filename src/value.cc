@@ -34,12 +34,14 @@
 #include <boost/variant/apply_visitor.hpp>
 #include <boost/variant/static_visitor.hpp>
 #include <boost/format.hpp>
-
-#include <QtCore/QDir>
+#include "boost-utils.h"
+#include "boosty.h"
 
 std::ostream &operator<<(std::ostream &stream, const Filename &filename)
 {
-  stream << QuotedString(QDir::current().relativeFilePath(QString::fromLocal8Bit(filename.c_str())).toLocal8Bit().constData());
+  fs::path fnpath = fs::path( (std::string)filename );
+  fs::path fpath = boostfs_uncomplete(fnpath, fs::current_path());
+  stream << QuotedString(boosty::stringy( fpath ));
   return stream;
 }
 
@@ -115,11 +117,6 @@ Value::Value(const RangeType &v) : value(v)
   //  std::cout << "creating range\n";
 }
 
-Value::Value(double begin, double step, double end) : value(RangeType(begin, step, end))
-{
-  //  std::cout << "creating range from numbers\n";
-}
-
 Value::ValueType Value::type() const
 {
   return static_cast<ValueType>(this->value.which());
@@ -180,12 +177,15 @@ public:
   }
 
   std::string operator()(const double &op1) const {
-#ifdef OPENSCAD_TESTING
-    // Quick and dirty hack to work around floating point rounding differences
-    // across platforms for testing purposes.
     if (op1 != op1) { // Fix for avoiding nan vs. -nan across platforms
       return "nan";
     }
+    if (op1 == 0) {
+      return "0"; // Don't return -0 (exactly -0 and 0 equal 0)
+    }
+#ifdef OPENSCAD_TESTING
+    // Quick and dirty hack to work around floating point rounding differences
+    // across platforms for testing purposes.
     std::stringstream tmp;
     tmp.precision(12);
     tmp.setf(std::ios_base::fixed);
@@ -295,11 +295,6 @@ Value &Value::operator=(const Value &v)
   return *this;
 }
 
-Value Value::operator!() const
-{
-  return Value(!this->toBool());
-}
-
 class equals_visitor : public boost::static_visitor<bool>
 {
 public:
@@ -320,16 +315,6 @@ bool Value::operator==(const Value &v) const
 bool Value::operator!=(const Value &v) const
 {
   return !(*this == v);
-}
-
-bool Value::operator&&(const Value &v) const
-{
-  return this->toBool() && v.toBool();
-}
-
-bool Value::operator||(const Value &v) const
-{
-  return this->toBool() || v.toBool();
 }
 
 class less_visitor : public boost::static_visitor<bool>
@@ -600,7 +585,7 @@ public:
   Value operator()(const std::string &str, const double &idx) const {
     int i = int(idx);
     Value v;
-    if (i >= 0 && i < str.size()) {
+    if ((i >= 0) && (i < (int)str.size())) {
       v = Value(str[int(idx)]);
       //      std::cout << "bracket_visitor: " <<  v << "\n";
     }
@@ -609,7 +594,7 @@ public:
 
   Value operator()(const Value::VectorType &vec, const double &idx) const {
     int i = int(idx);
-    if (i >= 0 && i < vec.size()) return vec[int(idx)];
+    if ((i >= 0) && (i < (int)vec.size())) return vec[int(idx)];
     return Value::undefined;
   }
 

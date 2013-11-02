@@ -147,13 +147,18 @@ void QGLView::resizeGL(int w, int h)
 
 void QGLView::paintGL()
 {
-	GLView::gimbalCamPaintGL();
+  GLView::gimbalCamPaintGL();
 
   if (statusLabel) {
     QString msg;
+
+    Camera nc( cam );
+    nc.gimbalDefaultTranslate();
     msg.sprintf("Viewport: translate = [ %.2f %.2f %.2f ], rotate = [ %.2f %.2f %.2f ], distance = %.2f",
-      -cam.object_trans.x(), -cam.object_trans.y(), -cam.object_trans.z(),
-      fmodf(360 - cam.object_rot.x() + 90, 360), fmodf(360 - cam.object_rot.y(), 360), fmodf(360 - cam.object_rot.z(), 360), cam.viewer_distance);
+      nc.object_trans.x(), nc.object_trans.y(), nc.object_trans.z(),
+      nc.object_rot.x(), nc.object_rot.y(), nc.object_rot.z(),
+      nc.viewer_distance );
+
     statusLabel->setText(msg);
   }
 
@@ -162,15 +167,20 @@ void QGLView::paintGL()
 
 void QGLView::keyPressEvent(QKeyEvent *event)
 {
-  if (event->key() == Qt::Key_Plus) {
+  switch (event->key()) {
+  case Qt::Key_Plus:  // On many keyboards, this requires to press Shift-equals
+  case Qt::Key_Equal: // ...so simplify this a bit.
     cam.viewer_distance *= 0.9;
     updateGL();
-    return;
-  }
-  if (event->key() == Qt::Key_Minus) {
+    break;
+  case Qt::Key_Minus:
     cam.viewer_distance /= 0.9;
     updateGL();
-    return;
+    break;
+  case Qt::Key_C:     // 'center'
+    cam.object_trans << 0, 0, 0;
+    updateGL();
+    break;
   }
 }
 
@@ -182,6 +192,7 @@ void QGLView::wheelEvent(QWheelEvent *event)
 
 void QGLView::mousePressEvent(QMouseEvent *event)
 {
+  setFocus();
   mouse_drag_active = true;
   last_mouse = event->globalPos();
 }

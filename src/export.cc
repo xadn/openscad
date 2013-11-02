@@ -47,7 +47,6 @@ struct stl_triangle {
 	stl_point p1, p2, p3, normal;
 };
 
-
 std::ostream&  operator<<( std::ostream &stream, const stl_point &p ) {
 	stream << p.x << " " << p.y << " " << p.z;
 	return stream;
@@ -64,6 +63,7 @@ bool operator!=( const stl_point &p, const stl_point &p2 ) {
 	return (p.x!=p2.x || p.y!=p2.y || p.z!=p2.z);
 }
 
+// for map() only. not geometric nor algebraic sense of less-than
 bool operator<( const stl_point &p, const stl_point &p2 ) {
 	return (p.tostr() < p2.tostr());
 }
@@ -144,7 +144,7 @@ std::vector<stl_triangle> get_cgal_nef_poly_triangles( CGAL_Nef_polyhedron3 p3 )
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 	try {
 		CGAL_Polyhedron P;
-	  p3.convert_to_Polyhedron(P);
+		p3.convert_to_Polyhedron(P);
 		triangles = get_cgal_poly_triangles( P );
 	}
 	catch (CGAL::Assertion_exception e) {
@@ -165,8 +165,7 @@ void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 	assert( root_N );
 	std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( *(root_N->p3) );
 	BOOST_FOREACH( stl_triangle &t, triangles) {
-		output
-      << "\n facet normal " << t.normal.x << " " << t.normal.y << " " << t.normal.z
+		output  << "\n facet normal " << t.normal.x << " " << t.normal.y << " " << t.normal.z
 			<< "\n    outer loop"
 			<< "\n      vertex " << t.p1.x << " " << t.p1.y << " " << t.p1.z
 			<< "\n      vertex " << t.p2.x << " " << t.p2.y << " " << t.p2.z
@@ -179,47 +178,40 @@ void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 }
 
 /*!
-	Saves the current 3D CGAL Nef polyhedron volumes to the given file.
-  Called from export_amf. The file must be open.
-	CGAL Nef polyhedra Volumes are converted to AMF volumes.
- */
+Saves the current 3D CGAL Nef polyhedron volumes to the given stream,
+which is assumed to already have had vertexes written to it.
+CGAL Nef polyhedra Volumes are converted to AMF volumes.
+*/
 void export_amf_volumes(CGAL_Nef_polyhedron *root_N, std::ostream &output,
      std::map<stl_point,int> &vertexmap1)
 {
 	// Volumes only work if we regularize the polyhedron first. See
 	// https://github.com/noelwarr/rgal/blob/master/cpp/rb_Nef_polyhedron_3.cpp
-	CGAL_Nef_polyhedron3::Volume_const_iterator c;
+	CGAL_Nef_polyhedron3::Volume_const_iterator vol_i;
 	CGAL_Nef_polyhedron3 N = *(root_N->p3);
-	CGAL_Nef_polyhedron3 R = N.regularization();
-  CGAL_forall_volumes(c,R) {
-    if ((*c).mark()) { // only use inner volumes not outer volumes
-		  output << " <volume>\n";
-      CGAL_Polyhedron P;
-// buggy
-//      R.convert_inner_shell_to_polyhedron(c->shells_begin(), P);
-//CGAL::Polyhedron_incremental_builder_3<HDS>::
-//lookup_halfedge(): input error: facet 38 shares a halfedge from vertex 269 to vertex 268 with facet 33.
-//CGAL error: assertion violation!
-
-CGAL_Nef_polyhedron3::Shell_entry_const_iterator si;
-CGAL_forall_shells_of(si, c) {
-CGAL_Nef_polyhedron3::SFace_const_handle sfch(si);
-CGAL_Nef_polyhedron3 O(R,sfch);
-
-			std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( O );
-		  BOOST_FOREACH(stl_triangle &t, triangles) {
-	  		output << "  <triangle>\n"
-	 	           << "   <v1>" << vertexmap1[ t.p1 ] << "</v1>\n"
-	             << "   <v2>" << vertexmap1[ t.p2 ] << "</v2>\n"
-	             << "   <v3>" << vertexmap1[ t.p3 ] << "</v3>\n"
-	             << "  </triangle>\n";
-		  }
-		  output << " </volume>\n\n";
-
-}
-
-		} //mark
-  }
+	CGAL_Nef_polyhedron3 reg_nef_poly = N.regularization();
+ 	CGAL_forall_volumes(vol_i,reg_nef_poly) {
+		if ((*vol_i).mark()) { // use inner volumes, not outer volumes
+			output << " <volume>\n";
+			CGAL_Polyhedron P;
+			// Use 'shell' visitor pattern.
+			// convert_inner_shell_to_polyhedron is buggy.
+			CGAL_Nef_polyhedron3::Shell_entry_const_iterator shell_i;
+			CGAL_forall_shells_of(shell_i, vol_i) {
+				CGAL_Nef_polyhedron3::SFace_const_handle sfch(shell_i);
+				CGAL_Nef_polyhedron3 sub_nef_poly(reg_nef_poly,sfch);
+				std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( sub_nef_poly );
+				BOOST_FOREACH(stl_triangle &t, triangles) {
+					output  << "  <triangle>\n"
+						<< "   <v1>" << vertexmap1[ t.p1 ] << "</v1>\n"
+						<< "   <v2>" << vertexmap1[ t.p2 ] << "</v2>\n"
+						<< "   <v3>" << vertexmap1[ t.p3 ] << "</v3>\n"
+						<< "  </triangle>\n";
+				}
+				output << " </volume>\n\n";
+			} // forall shells
+		} // inner volume
+	} // forall volumes
 }
 
 /*!
@@ -252,24 +244,24 @@ void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 		}
 	}
 
-	output << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
-         << "<amf unit=\"millimeter\">\n"
-         << " <object id=\"0\">\n"
-         << " <mesh>\n";
-  output << " <vertices>\n";
+	output  << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+        	<< "<amf unit=\"millimeter\">\n"
+        	<< " <object id=\"0\">\n"
+        	<< " <mesh>\n"
+		<< " <vertices>\n";
 	std::map<int,stl_point>::const_iterator vi;
 	for ( vi = vertexmap2.begin(); vi != vertexmap2.end(); ++vi ){
- 		output << "  <vertex><coordinates>\n"
-           << "   <x>" << vi->second.x << "</x>\n"
-           << "   <y>" << vi->second.y << "</y>\n"
-           << "   <z>" << vi->second.z << "</z>\n"
-           << "  </coordinates></vertex>\n";
-  }
-  output << " </vertices>\n\n";
+ 		output  << "  <vertex><coordinates>\n"
+			<< "   <x>" << vi->second.x << "</x>\n"
+			<< "   <y>" << vi->second.y << "</y>\n"
+			<< "   <z>" << vi->second.z << "</z>\n"
+			<< "  </coordinates></vertex>\n";
+	}
+	output << " </vertices>\n\n";
 	export_amf_volumes( root_N, output, vertexmap1 );
-  output << " </mesh>\n"
-         << " </object>\n"
-         << "</amf>\n";
+	output  << " </mesh>\n"
+		<< " </object>\n"
+		<< "</amf>\n";
 }
 
 void export_off(CGAL_Nef_polyhedron *root_N, std::ostream &output)

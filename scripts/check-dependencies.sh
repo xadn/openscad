@@ -86,16 +86,16 @@ mpfr_sysver()
 
 gmp_sysver()
 {
-  # on some systems you have VERSION in gmp-$arch.h not gmp.h. use gmp*.h
-  if [ ! -e $1/include ]; then return; fi
-  gmppaths=`ls $1/include | grep ^gmp`
-  if [ ! "$gmppaths" ]; then return; fi
+  gmppaths="`find $1 -name 'gmp.h' -o -name 'gmp-*.h'`"
+  if [ ! "$gmppaths" ]; then
+    debug "gmp_sysver no gmp.h beneath $1"
+    return
+  fi
   for gmpfile in $gmppaths; do
-    gmppath=$1/include/$gmpfile
-    if [ "`grep __GNU_MP_VERSION $gmppath`" ]; then
-      gmpmaj=`grep "define  *__GNU_MP_VERSION  *[0-9]*" $gmppath | awk '{print $3}'`
-      gmpmin=`grep "define  *__GNU_MP_VERSION_MINOR  *[0-9]*" $gmppath | awk '{print $3}'`
-      gmppat=`grep "define  *__GNU_MP_VERSION_PATCHLEVEL  *[0-9]*" $gmppath | awk '{print $3}'`
+    if [ "`grep __GNU_MP_VERSION $gmpfile`" ]; then
+      gmpmaj=`grep "define  *__GNU_MP_VERSION  *[0-9]*" $gmpfile | awk '{print $3}'`
+      gmpmin=`grep "define  *__GNU_MP_VERSION_MINOR  *[0-9]*" $gmpfile | awk '{print $3}'`
+      gmppat=`grep "define  *__GNU_MP_VERSION_PATCHLEVEL  *[0-9]*" $gmpfile | awk '{print $3}'`
     fi
   done
   gmp_sysver_result="$gmpmaj.$gmpmin.$gmppat"
@@ -155,8 +155,15 @@ flex_sysver()
 
 bison_sysver()
 {
+  # bison (GNU Bison) 2.7.12-4996
   if [ ! -x $1/bin/bison ]; then return ; fi
-  bison_sysver_result=`$1/bin/bison --version | grep bison | sed s/"[^0-9.]"/" "/g`
+  bison_sver=`$1/bin/bison --version | grep bison`
+  debug bison_sver1: $bison_sver
+  bison_sver=`echo $bison_sver | awk -F ")" ' { print $2 } '`
+  debug bison_sver2: $bison_sver
+  bison_sver=`echo $bison_sver | awk -F "-" ' { print $1 } '`
+  debug bison_sver3: $bison_sver
+  bison_sysver_result=$bison_sver
 }
 
 gcc_sysver()
@@ -249,32 +256,47 @@ pkg_config_search()
 
 get_minversion_from_readme()
 {
-  if [ -e README.md ]; then READFILE=README.md; fi
-  if [ -e ../README.md ]; then READFILE=../README.md; fi
-  if [ ! $READFILE ]; then
-    if [ "`command -v dirname`" ]; then
-      READFILE=`dirname $0`/../README.md
-    fi
-  fi
-  if [ ! $READFILE ]; then echo "cannot find README.md"; exit 1; fi
   debug get_minversion_from_readme $*
+
+  # Extract dependency name
   if [ ! $1 ]; then return; fi
   depname=$1
-  local grv_tmp=
+
   debug $depname
-  # example-->     * [CGAL (3.6 - 3.9)] (www.cgal.org)  becomes 3.6
-  # steps: eliminate *, find left (, find -, make 'x' into 0, delete junk
-  grv_tmp=`grep -i ".$depname.*([0-9]" $READFILE | sed s/"*"//`
-  debug $grv_tmp
-  grv_tmp=`echo $grv_tmp | awk -F"(" '{print $2}'`
-  debug $grv_tmp
-  grv_tmp=`echo $grv_tmp | awk -F"-" '{print $1}'`
-  debug $grv_tmp
-  grv_tmp=`echo $grv_tmp | sed s/"x"/"0"/g`
-  debug $grv_tmp
-  grv_tmp=`echo $grv_tmp | sed s/"[^0-9.]"//g`
-  debug $grv_tmp
-  get_minversion_from_readme_result=$grv_tmp
+  local grv_tmp=
+  for READFILE in README.md ../README.md "`dirname "$0"`/../README.md"
+  do
+    if [ ! -e "$READFILE" ]
+    then
+      debug "get_minversion_from_readme $READFILE not found"
+      continue
+    fi
+    debug "get_minversion_from_readme $READFILE found"
+    grep -qi ".$depname.*([0-9]" $READFILE || continue
+    grv_tmp="`grep -i ".$depname.*([0-9]" $READFILE | sed s/"*"//`"
+    debug $grv_tmp
+    grv_tmp="`echo $grv_tmp | awk -F"(" '{print $2}'`"
+    debug $grv_tmp
+    grv_tmp="`echo $grv_tmp | awk -F"-" '{print $1}'`"
+    debug $grv_tmp
+    grv_tmp="`echo $grv_tmp | sed s/"x"/"0"/g`"
+    debug $grv_tmp
+    grv_tmp="`echo $grv_tmp | sed s/"[^0-9.]"//g`"
+    debug $grv_tmp
+    if [ "z$grv_tmp" = "z" ]
+    then
+      debug "get_minversion_from_readme no result for $depname from $READFILE"
+      continue
+    fi
+    get_minversion_from_readme_result=$grv_tmp
+    return 0
+  done
+  if [ "z$grv_tmp" = "z" ]
+  then
+    debug "get_minversion_from_readme no result for $depname found anywhere"
+    get_minversion_from_readme_result=""
+    return 0
+  fi
 }
 
 find_min_version()
@@ -420,12 +442,12 @@ find_installed_version()
   # try to find/parse headers and/or binary output
   # break on the first match. (change the order to change precedence)
   if [ ! $fsv_tmp ]; then
-    for syspath in "/usr/local" "/opt/local" "/usr/pkg" "/usr" $OPENSCAD_LIBRARIES; do
+    for syspath in $OPENSCAD_LIBRARIES "/usr/local" "/opt/local" "/usr/pkg" "/usr"; do
       if [ -e $syspath ]; then
         debug $depname"_sysver" $syspath
         eval $depname"_sysver" $syspath
         fsv_tmp=`eval echo "$"$depname"_sysver_result"`
-		if [ $fsv_tmp ]; then break; fi
+        if [ $fsv_tmp ]; then break; fi
       fi
     done
   fi
@@ -511,6 +533,7 @@ main()
   deps="qt4 cgal gmp mpfr boost opencsg glew eigen gcc bison flex make"
   #deps="$deps curl git" # not technically necessary for build
   #deps="$deps python cmake imagemagick" # only needed for tests
+  #deps="cgal"
   pretty_print title
   for depname in $deps; do
     debug "processing $dep"
@@ -520,7 +543,7 @@ main()
     dep_minver=$find_min_version_result
     compare_version $dep_minver $dep_sysver
     dep_compare=$compare_version_result
-    pretty_print $depname $dep_minver $dep_sysver $dep_compare
+    pretty_print $depname "$dep_minver" "$dep_sysver" $dep_compare
   done
   check_old_local
   check_misc

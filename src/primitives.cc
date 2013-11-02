@@ -27,12 +27,13 @@
 #include "module.h"
 #include "node.h"
 #include "polyset.h"
-#include "context.h"
+#include "evalcontext.h"
 #include "dxfdata.h"
 #include "dxftess.h"
 #include "builtin.h"
 #include "printutils.h"
 #include "visitor.h"
+#include "context.h"
 #include <sstream>
 #include <assert.h>
 #include <boost/assign/std/vector.hpp>
@@ -55,7 +56,9 @@ class PrimitiveModule : public AbstractModule
 public:
 	primitive_type_e type;
 	PrimitiveModule(primitive_type_e type) : type(type) { }
-	virtual AbstractNode *evaluate(const Context *ctx, const ModuleInstantiation *inst) const;
+	virtual AbstractNode *instantiate(const Context *ctx, const ModuleInstantiation *inst, const EvalContext *evalctx) const;
+private:
+	Value lookup_radius(const Context &ctx, const std::string &radius_var, const std::string &diameter_var) const;
 };
 
 class PrimitiveNode : public AbstractPolyNode
@@ -104,44 +107,72 @@ public:
 	virtual PolySet *evaluate_polyset(class PolySetEvaluator *) const;
 };
 
-AbstractNode *PrimitiveModule::evaluate(const Context *ctx, const ModuleInstantiation *inst) const
+/**
+ * Return a radius value by looking up both a diameter and radius variable.
+ * The diameter has higher priority, so if found an additionally set radius
+ * value is ignored.
+ * 
+ * @param ctx data context with variable values.
+ * @param radius_var name of the variable to lookup for the radius value.
+ * @param diameter_var name of the variable to lookup for the diameter value.
+ * @return radius value of type Value::NUMBER or Value::UNDEFINED if both
+ *         variables are invalid or not set.
+ */
+Value PrimitiveModule::lookup_radius(const Context &ctx, const std::string &diameter_var, const std::string &radius_var) const
+{
+	const Value d = ctx.lookup_variable(diameter_var, true);
+	const Value r = ctx.lookup_variable(radius_var, true);
+	const bool r_defined = (r.type() == Value::NUMBER);
+	
+	if (d.type() == Value::NUMBER) {
+		if (r_defined) {
+			PRINTB("WARNING: Ignoring radius variable '%s' as diameter '%s' is defined too.", radius_var % diameter_var);
+		}
+		return Value(d.toDouble() / 2.0);
+	} else if (r_defined) {
+		return r;
+	} else {
+		return Value();
+	}
+}
+
+AbstractNode *PrimitiveModule::instantiate(const Context *ctx, const ModuleInstantiation *inst, const EvalContext *evalctx) const
 {
 	PrimitiveNode *node = new PrimitiveNode(inst, this->type);
 
 	node->center = false;
 	node->x = node->y = node->z = node->h = node->r1 = node->r2 = 1;
 
-	std::vector<std::string> argnames;
-	std::vector<Expression*> argexpr;
+	AssignmentList args;
 
 	switch (this->type) {
 	case CUBE:
-		argnames += "size", "center";
+		args += Assignment("size", NULL), Assignment("center", NULL);
 		break;
 	case SPHERE:
-		argnames += "r";
+		args += Assignment("r", NULL);
 		break;
 	case CYLINDER:
-		argnames += "h", "r1", "r2", "center";
+		args += Assignment("h", NULL), Assignment("r1", NULL), Assignment("r2", NULL), Assignment("center", NULL);
 		break;
 	case POLYHEDRON:
-		argnames += "points", "triangles", "convexity";
+		args += Assignment("points", NULL), Assignment("triangles", NULL), Assignment("convexity", NULL);
 		break;
 	case SQUARE:
-		argnames += "size", "center";
+		args += Assignment("size", NULL), Assignment("center", NULL);
 		break;
 	case CIRCLE:
-		argnames += "r";
+		args += Assignment("r", NULL);
 		break;
 	case POLYGON:
-		argnames += "points", "paths", "convexity";
+		args += Assignment("points", NULL), Assignment("paths", NULL), Assignment("convexity", NULL);
 		break;
 	default:
-		assert(false && "PrimitiveModule::evaluate(): Unknown node type");
+		assert(false && "PrimitiveModule::instantiate(): Unknown node type");
 	}
 
 	Context c(ctx);
-	c.args(argnames, argexpr, inst->argnames, inst->argvalues);
+	c.setVariables(args, evalctx);
 
 	node->fn = c.lookup_variable("$fn").toDouble();
 	node->fs = c.lookup_variable("$fs").toDouble();
@@ -170,22 +201,21 @@ AbstractNode *PrimitiveModule::evaluate(const Context *ctx, const ModuleInstanti
 	}
 
 	if (type == SPHERE) {
-		Value r = c.lookup_variable("r");
+		const Value r = lookup_radius(c, "d", "r");
 		if (r.type() == Value::NUMBER) {
 			node->r1 = r.toDouble();
 		}
 	}
 
 	if (type == CYLINDER) {
-		Value h = c.lookup_variable("h");
-		Value r, r1, r2;
-		r1 = c.lookup_variable("r1");
-		r2 = c.lookup_variable("r2");
-		r = c.lookup_variable("r", true); // silence warning since r has no default value
-		Value center = c.lookup_variable("center");
+		const Value h = c.lookup_variable("h");
 		if (h.type() == Value::NUMBER) {
 			node->h = h.toDouble();
 		}
+
+		const Value r = lookup_radius(c, "d", "r");
+		const Value r1 = lookup_radius(c, "d1", "r1");
+		const Value r2 = lookup_radius(c, "d2", "r2");
 		if (r.type() == Value::NUMBER) {
 			node->r1 = r.toDouble();
 			node->r2 = r.toDouble();
@@ -196,6 +226,8 @@ AbstractNode *PrimitiveModule::evaluate(const Context *ctx, const ModuleInstanti
 		if (r2.type() == Value::NUMBER) {
 			node->r2 = r2.toDouble();
 		}
+		
+		const Value center = c.lookup_variable("center");
 		if (center.type() == Value::BOOL) {
 			node->center = center.toBool();
 		}
@@ -218,7 +250,7 @@ AbstractNode *PrimitiveModule::evaluate(const Context *ctx, const ModuleInstanti
 	}
 
 	if (type == CIRCLE) {
-		Value r = c.lookup_variable("r");
+		const Value r = lookup_radius(c, "d", "r");
 		if (r.type() == Value::NUMBER) {
 			node->r1 = r.toDouble();
 		}
@@ -242,9 +274,8 @@ AbstractNode *PrimitiveModule::evaluate(const Context *ctx, const ModuleInstanti
 */
 int get_fragments_from_r(double r, double fn, double fs, double fa)
 {
-	if (r < GRID_FINE) return 0;
-	if (fn > 0.0)
-		return (int)fn;
+	if (r < GRID_FINE) return 3;
+	if (fn > 0.0) return (int)(fn >= 3 ? fn : 3);
 	return (int)ceil(fmax(fmin(360.0 / fa, r*2*M_PI / fs), 5));
 }
 
@@ -514,8 +545,12 @@ sphere_next_r2:
 
 		if (this->paths.toVector().size() == 0)
 		{
+			if (dd.points.size() <= 2) { // Ignore malformed polygons
+				delete p;
+				return NULL;
+			}
 			dd.paths.push_back(DxfData::Path());
-			for (size_t i=0; i<this->points.toVector().size(); i++) {
+			for (size_t i=0; i<dd.points.size(); i++) {
 				assert(i < dd.points.size()); // FIXME: Not needed, but this used to be an 'if'
 				dd.paths.back().indices.push_back(i);
 			}
@@ -546,7 +581,7 @@ sphere_next_r2:
 
 		p->is2d = true;
 		p->convexity = convexity;
-		dxf_tesselate(p, dd, 0, true, false, 0);
+		dxf_tesselate(p, dd, 0, Vector2d(1,1), true, false, 0);
 		dxf_border_to_ps(p, dd);
 	}
 

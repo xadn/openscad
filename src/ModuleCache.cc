@@ -14,50 +14,57 @@
 #include <time.h>
 #include <sys/stat.h>
 
+//#include "parsersettings.h"
 /*!
 	FIXME: Implement an LRU scheme to avoid having an ever-growing module cache
 */
 
 ModuleCache *ModuleCache::inst = NULL;
 
-static bool is_modified(const std::string &filename, const time_t &mtime)
+/*!
+	Reevaluate the given file and recompile if necessary.
+	Returns NULL on any error (e.g. compile error or file not found)
+
+	If the given filename is relative, it means that the module hasn't been
+	previously located.
+*/
+FileModule *ModuleCache::evaluate(const std::string &filename)
 {
+	FileModule *lib_mod = (this->entries.find(filename) != this->entries.end()) ?
+		&(*this->entries[filename].module) : NULL;
+
+	// Don't try to recursively evaluate - if the file changes
+	// during evaluation, that would be really bad.
+	if (lib_mod && lib_mod->isHandlingDependencies()) return lib_mod;
+
+	bool shouldCompile = true;
+
+	// Create cache ID
 	struct stat st;
 	memset(&st, 0, sizeof(struct stat));
-	stat(filename.c_str(), &st);
-	return (st.st_mtime > mtime);
-}
+	bool valid = (stat(filename.c_str(), &st) == 0);
 
-Module *ModuleCache::evaluate(const std::string &filename)
-{
-	Module *lib_mod = NULL;
-
-  // Create cache ID
-	struct stat st;
-	memset(&st, 0, sizeof(struct stat));
-	stat(filename.c_str(), &st);
-
+  // If file isn't there, just return and let the cache retain the old module
+	if (!valid) return NULL;
+	
 	std::string cache_id = str(boost::format("%x.%x") % st.st_mtime % st.st_size);
 
-  // Lookup in cache
-	if (this->entries.find(filename) != this->entries.end() && 
-			this->entries[filename].cache_id == cache_id) {
-#ifdef DEBUG
-// Causes too much debug output
-//		PRINTB("Using cached library: %s (%s)", filename % cache_id);
-#endif
-		lib_mod = &(*this->entries[filename].module);
-
-		BOOST_FOREACH(const Module::IncludeContainer::value_type &item, lib_mod->includes) {
-			if (is_modified(item.first, item.second)) {
+	// Lookup in cache
+	if (lib_mod) {
+		if (this->entries[filename].cache_id == cache_id) {
+			shouldCompile = false;
+			if (lib_mod->includesChanged()) {
 				lib_mod = NULL;
-				break;
+				shouldCompile = true;
 			}
 		}
 	}
+	else {
+		shouldCompile = valid;
+	}
 
-  // If cache lookup failed (non-existing or old timestamp), compile module
-	if (!lib_mod) {
+	// If cache lookup failed (non-existing or old timestamp), compile module
+	if (shouldCompile) {
 #ifdef DEBUG
 		if (this->entries.find(filename) != this->entries.end()) {
 			PRINTB("Recompiling cached library: %s (%s)", filename % cache_id);
@@ -67,18 +74,20 @@ Module *ModuleCache::evaluate(const std::string &filename)
 		}
 #endif
 
-		std::ifstream ifs(filename.c_str());
-		if (!ifs.is_open()) {
-			PRINTB("WARNING: Can't open library file '%s'\n", filename);
-			return NULL;
-		}
 		std::stringstream textbuf;
-		textbuf << ifs.rdbuf();
+		{
+			std::ifstream ifs(filename.c_str());
+			if (!ifs.is_open()) {
+				PRINTB("WARNING: Can't open library file '%s'\n", filename);
+				return NULL;
+			}
+			textbuf << ifs.rdbuf();
+		}
 		textbuf << "\n" << commandline_commands;
 
 		print_messages_push();
 
-		Module *oldmodule = NULL;
+		FileModule *oldmodule = NULL;
 		cache_entry e = { NULL, cache_id };
 		if (this->entries.find(filename) != this->entries.end()) {
 			oldmodule = this->entries[filename].module;
@@ -86,12 +95,12 @@ Module *ModuleCache::evaluate(const std::string &filename)
 		this->entries[filename] = e;
 		
 		std::string pathname = boosty::stringy(fs::path(filename).parent_path());
-		lib_mod = dynamic_cast<Module*>(parse(textbuf.str().c_str(), pathname.c_str(), false));
+		lib_mod = dynamic_cast<FileModule*>(parse(textbuf.str().c_str(), pathname.c_str(), false));
 		PRINTB_NOCACHE("  compiled module: %p", lib_mod);
 		
 		if (lib_mod) {
 			// We defer deletion so we can ensure that the new module won't
-      // have the same address as the old
+			// have the same address as the old
 			delete oldmodule;
 			this->entries[filename].module = lib_mod;
 		} else {
@@ -101,7 +110,9 @@ Module *ModuleCache::evaluate(const std::string &filename)
 		print_messages_pop();
 	}
 
-	if (lib_mod) lib_mod->handleDependencies();
+	if (lib_mod) {
+		lib_mod->handleDependencies();
+	}
 
 	return lib_mod;
 }
@@ -109,5 +120,11 @@ Module *ModuleCache::evaluate(const std::string &filename)
 void ModuleCache::clear()
 {
 	this->entries.clear();
+}
+
+FileModule *ModuleCache::lookup(const std::string &filename)
+{
+	return (this->entries.find(filename) != this->entries.end()) ?
+		&(*this->entries[filename].module) : NULL;
 }
 

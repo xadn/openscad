@@ -141,6 +141,9 @@ CGAL_Nef_polyhedron CGALEvaluator::applyHull(const CgaladvNode &node)
 			PRINT("WARNING: hull() does not support mixing 2D and 3D objects.");
 			continue;
 		}
+		if (chN.isNull()) { // If one of the children evaluated to a null object
+			continue;
+		}		
 		if (dim == 2) {
 			CGAL_Nef_polyhedron2::Explorer explorer = chN.p2->explorer();
 			BOOST_FOREACH(const CGAL_Nef_polyhedron2::Explorer::Vertex &vh, 
@@ -179,6 +182,74 @@ CGAL_Nef_polyhedron CGALEvaluator::applyHull(const CgaladvNode &node)
 	return N;
 }
 
+CGAL_Nef_polyhedron CGALEvaluator::applyResize(const CgaladvNode &node)
+{
+	// Based on resize() in Giles Bathgate's RapCAD (but not exactly)
+	CGAL_Nef_polyhedron N;
+	N = applyToChildren(node, CGE_UNION);
+
+	if ( N.isNull() || N.isEmpty() ) return N;
+
+	for (int i=0;i<3;i++) {
+		if (node.newsize[i]<0) {
+			PRINT("WARNING: Cannot resize to sizes less than 0.");
+			return N;
+		}
+	}
+
+	CGAL_Iso_cuboid_3 bb;
+
+	if ( N.dim == 2 ) {
+		CGAL_Iso_rectangle_2e bbox = bounding_box( *N.p2 );
+		CGAL_Point_2e min2(bbox.min()), max2(bbox.max());
+		CGAL_Point_3 min3(CGAL::to_double(min2.x()), CGAL::to_double(min2.y()), 0),
+			max3(CGAL::to_double(max2.x()), CGAL::to_double(max2.y()), 0);
+		bb = CGAL_Iso_cuboid_3( min3, max3 );
+	}
+	else {
+		bb = bounding_box( *N.p3 );
+	}
+
+	std::vector<NT3> scale, bbox_size;
+	for (int i=0;i<3;i++) scale.push_back( NT3(1) );
+	bbox_size.push_back( bb.xmax()-bb.xmin() );
+	bbox_size.push_back( bb.ymax()-bb.ymin() );
+	bbox_size.push_back( bb.zmax()-bb.zmin() );
+	int newsizemax_index = 0;
+	for (int i=0;i<N.dim;i++) {
+		if (node.newsize[i]) {
+			if (bbox_size[i]==NT3(0)) {
+				PRINT("WARNING: Resize in direction normal to flat object is not implemented");
+				return N;
+			}
+			else {
+				scale[i] = NT3(node.newsize[i]) / bbox_size[i];
+			}
+			if ( node.newsize[i] > node.newsize[newsizemax_index] )
+				newsizemax_index = i;
+		}
+	}
+
+	NT3 autoscale = NT3( 1 );
+	if ( node.newsize[ newsizemax_index ] != 0 )
+		autoscale = NT3( node.newsize[ newsizemax_index ] ) / bbox_size[ newsizemax_index ];
+	for (int i=0;i<N.dim;i++) {
+		if (node.autosize[i] && node.newsize[i]==0)
+			scale[i] = autoscale;
+	}
+
+	Eigen::Matrix4d t;
+	t << CGAL::to_double(scale[0]),           0,        0,        0,
+	     0,        CGAL::to_double(scale[1]),           0,        0,
+	     0,        0,        CGAL::to_double(scale[2]),           0,
+	     0,        0,        0,                                   1;
+
+	N.transform( Transform3d( t ) );
+	return N;
+}
+
+
+
 /*
 	Typical visitor behavior:
 	o In prefix: Check if we're cached -> prune
@@ -216,7 +287,7 @@ Response CGALEvaluator::visit(State &state, const CsgNode &node)
 	if (state.isPostfix()) {
 		CGAL_Nef_polyhedron N;
 		if (!isCached(node)) {
-			CGALEvaluator::CsgOp op;
+			CGALEvaluator::CsgOp op = CGE_UNION;
 			switch (node.type) {
 			case CSG_TYPE_UNION:
 				op = CGE_UNION;
@@ -253,57 +324,7 @@ Response CGALEvaluator::visit(State &state, const TransformNode &node)
 				PRINT("Warning: Transformation matrix contains Not-a-Number and/or Infinity - removing object.");
 				N.reset();
 			}
-
-			// Then apply transform
-			// If there is no geometry under the transform, N will be empty
-			// just silently ignore such nodes
-			if (!N.isNull()) {
-				if (N.dim == 2) {
-					// Unfortunately CGAL provides no transform method for CGAL_Nef_polyhedron2
-					// objects. So we convert in to our internal 2d data format, transform it,
-					// tesselate it and create a new CGAL_Nef_polyhedron2 from it.. What a hack!
-					
-					Eigen::Matrix2f testmat;
-					testmat << node.matrix(0,0), node.matrix(0,1), node.matrix(1,0), node.matrix(1,1);
-					if (testmat.determinant() == 0) {
-						PRINT("Warning: Scaling a 2D object with 0 - removing object");
-						N.reset();
-					}
-					else {
-						CGAL_Aff_transformation2 t(
-							node.matrix(0,0), node.matrix(0,1), node.matrix(0,3),
-							node.matrix(1,0), node.matrix(1,1), node.matrix(1,3), node.matrix(3,3));
-						
-						DxfData *dd = N.convertToDxfData();
-						for (size_t i=0; i < dd->points.size(); i++) {
-							CGAL_Kernel2::Point_2 p = CGAL_Kernel2::Point_2(dd->points[i][0], dd->points[i][1]);
-							p = t.transform(p);
-							dd->points[i][0] = to_double(p.x());
-							dd->points[i][1] = to_double(p.y());
-						}
-						
-						PolySet ps;
-						ps.is2d = true;
-						dxf_tesselate(&ps, *dd, 0, true, false, 0);
-						
-						N = evaluateCGALMesh(ps);
-						delete dd;
-					}
-				}
-				else if (N.dim == 3) {
-					if (node.matrix.matrix().determinant() == 0) {
-						PRINT("Warning: Scaling a 3D object with 0 - removing object");
-						N.reset();
-					}
-					else {
-						CGAL_Aff_transformation t(
-							node.matrix(0,0), node.matrix(0,1), node.matrix(0,2), node.matrix(0,3),
-							node.matrix(1,0), node.matrix(1,1), node.matrix(1,2), node.matrix(1,3),
-							node.matrix(2,0), node.matrix(2,1), node.matrix(2,2), node.matrix(2,3), node.matrix(3,3));
-						N.p3->transform(t);
-					}
-				}
-			}
+			N.transform( node.matrix );
 		}
 		else {
 			N = CGALCache::instance()->get(this->tree.getIdString(node));
@@ -357,6 +378,9 @@ Response CGALEvaluator::visit(State &state, const CgaladvNode &node)
 				break;
 			case HULL:
 				N = applyHull(node);
+				break;
+			case RESIZE:
+				N = applyResize(node);
 				break;
 			}
 		}

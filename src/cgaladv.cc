@@ -26,7 +26,7 @@
 
 #include "cgaladvnode.h"
 #include "module.h"
-#include "context.h"
+#include "evalcontext.h"
 #include "builtin.h"
 #include "PolySetEvaluator.h"
 #include <sstream>
@@ -39,27 +39,29 @@ class CgaladvModule : public AbstractModule
 public:
 	cgaladv_type_e type;
 	CgaladvModule(cgaladv_type_e type) : type(type) { }
-	virtual AbstractNode *evaluate(const Context *ctx, const ModuleInstantiation *inst) const;
+	virtual AbstractNode *instantiate(const Context *ctx, const ModuleInstantiation *inst, const EvalContext *evalctx) const;
 };
 
-AbstractNode *CgaladvModule::evaluate(const Context *ctx, const ModuleInstantiation *inst) const
+AbstractNode *CgaladvModule::instantiate(const Context *ctx, const ModuleInstantiation *inst, const EvalContext *evalctx) const
 {
 	CgaladvNode *node = new CgaladvNode(inst, type);
 
-	std::vector<std::string> argnames;
-	std::vector<Expression*> argexpr;
+	AssignmentList args;
 
 	if (type == MINKOWSKI)
-		argnames += "convexity";
+		args += Assignment("convexity", NULL);
 
 	if (type == GLIDE)
-		argnames += "path", "convexity";
+		args += Assignment("path", NULL), Assignment("convexity", NULL);
 
 	if (type == SUBDIV)
-		argnames += "type", "level", "convexity";
+		args += Assignment("type", NULL), Assignment("level", NULL), Assignment("convexity", NULL);
+
+	if (type == RESIZE)
+		args += Assignment("newsize", NULL), Assignment("auto", NULL);
 
 	Context c(ctx);
-	c.args(argnames, argexpr, inst->argnames, inst->argvalues);
+	c.setVariables(args, evalctx);
 
 	Value convexity, path, subdiv_type, level;
 
@@ -78,6 +80,28 @@ AbstractNode *CgaladvModule::evaluate(const Context *ctx, const ModuleInstantiat
 		level = c.lookup_variable("level", true);
 	}
 
+	if (type == RESIZE) {
+		Value ns = c.lookup_variable("newsize");
+		node->newsize << 0,0,0;
+		if ( ns.type() == Value::VECTOR ) {
+			Value::VectorType vs = ns.toVector();
+			if ( vs.size() >= 1 ) node->newsize[0] = vs[0].toDouble();
+			if ( vs.size() >= 2 ) node->newsize[1] = vs[1].toDouble();
+			if ( vs.size() >= 3 ) node->newsize[2] = vs[2].toDouble();
+		}
+		Value autosize = c.lookup_variable("auto");
+		node->autosize << false, false, false;
+		if ( autosize.type() == Value::VECTOR ) {
+			Value::VectorType va = autosize.toVector();
+			if ( va.size() >= 1 ) node->autosize[0] = va[0].toBool();
+			if ( va.size() >= 2 ) node->autosize[1] = va[1].toBool();
+			if ( va.size() >= 3 ) node->autosize[2] = va[2].toBool();
+		}
+		else if ( autosize.type() == Value::BOOL ) {
+			node->autosize << autosize.toBool(),autosize.toBool(),autosize.toBool();
+		}
+	}
+
 	node->convexity = (int)convexity.toDouble();
 	node->path = path;
 	node->subdiv_type = subdiv_type.toString();
@@ -86,8 +110,8 @@ AbstractNode *CgaladvModule::evaluate(const Context *ctx, const ModuleInstantiat
 	if (node->level <= 1)
 		node->level = 1;
 
-	std::vector<AbstractNode *> evaluatednodes = inst->evaluateChildren();
-	node->children.insert(node->children.end(), evaluatednodes.begin(), evaluatednodes.end());
+	std::vector<AbstractNode *> instantiatednodes = inst->instantiateChildren(evalctx);
+	node->children.insert(node->children.end(), instantiatednodes.begin(), instantiatednodes.end());
 
 	return node;
 }
@@ -112,9 +136,13 @@ std::string CgaladvNode::name() const
 	case HULL:
 		return "hull";
 		break;
+	case RESIZE:
+		return "resize";
+		break;
 	default:
 		assert(false);
 	}
+	return "internal_error";
 }
 
 std::string CgaladvNode::toString() const
@@ -135,6 +163,13 @@ std::string CgaladvNode::toString() const
 	case HULL:
 		stream << "()";
 		break;
+	case RESIZE:
+		stream << "(newsize = ["
+		  << this->newsize[0] << "," << this->newsize[1] << "," << this->newsize[2] << "]"
+		  << ", auto = ["
+		  << this->autosize[0] << "," << this->autosize[1] << "," << this->autosize[2] << "]"
+		  << ")";
+		break;
 	default:
 		assert(false);
 	}
@@ -148,4 +183,5 @@ void register_builtin_cgaladv()
 	Builtins::init("glide", new CgaladvModule(GLIDE));
 	Builtins::init("subdiv", new CgaladvModule(SUBDIV));
 	Builtins::init("hull", new CgaladvModule(HULL));
+	Builtins::init("resize", new CgaladvModule(RESIZE));
 }

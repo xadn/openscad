@@ -1,9 +1,10 @@
 #ifndef CGAL_NEF_POLYHEDRON_H_
 #define CGAL_NEF_POLYHEDRON_H_
 
-#include "cgalfwd.h"
+#include "cgal.h"
 #include "memory.h"
 #include <string>
+#include "linalg.h"
 
 class CGAL_Nef_polyhedron
 {
@@ -27,7 +28,7 @@ public:
 	int weight() const;
 	class PolySet *convertToPolyset();
 	class DxfData *convertToDxfData() const;
-
+	void transform( const Transform3d &matrix );
 	int dim;
 	shared_ptr<CGAL_Nef_polyhedron2> p2;
 	shared_ptr<CGAL_Nef_polyhedron3> p3;

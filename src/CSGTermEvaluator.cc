@@ -57,6 +57,7 @@ void CSGTermEvaluator::applyToChildren(const AbstractNode &node, CSGTermEvaluato
 		}
 	}
 	if (t1 && node.modinst->isHighlight()) {
+		t1->flag = CSGTerm::FLAG_HIGHLIGHT;
 		this->highlights.push_back(t1);
 	}
 	if (t1 && node.modinst->isBackground()) {
@@ -95,6 +96,7 @@ static shared_ptr<CSGTerm> evaluate_csg_term_from_ps(const State &state,
 	stream << node.name() << node.index();
 	shared_ptr<CSGTerm> t(new CSGTerm(ps, state.matrix(), state.color(), stream.str()));
 	if (modinst->isHighlight()) {
+		t->flag = CSGTerm::FLAG_HIGHLIGHT;
 		highlights.push_back(t);
 	}
 	if (modinst->isBackground()) {
@@ -106,25 +108,26 @@ static shared_ptr<CSGTerm> evaluate_csg_term_from_ps(const State &state,
 
 Response CSGTermEvaluator::visit(State &state, const AbstractPolyNode &node)
 {
-	if (state.isPostfix()) {
+	if (state.isPrefix()) {
 		shared_ptr<CSGTerm> t1;
 		if (this->psevaluator) {
 			shared_ptr<PolySet> ps = this->psevaluator->getPolySet(node, true);
 			if (ps) {
 				t1 = evaluate_csg_term_from_ps(state, this->highlights, this->background, 
 																			 ps, node.modinst, node);
+				node.progress_report();
 			}
 		}
 		this->stored_term[node.index()] = t1;
 		addToParent(state, node);
 	}
-	return ContinueTraversal;
+	return PruneTraversal;
 }
 
 Response CSGTermEvaluator::visit(State &state, const CsgNode &node)
 {
 	if (state.isPostfix()) {
-		CsgOp op;
+		CsgOp op = CSGT_UNION;
 		switch (node.type) {
 		case CSG_TYPE_UNION:
 			op = CSGT_UNION;
@@ -171,11 +174,12 @@ Response CSGTermEvaluator::visit(State &state, const ColorNode &node)
 // FIXME: If we've got CGAL support, render this node as a CGAL union into a PolySet
 Response CSGTermEvaluator::visit(State &state, const RenderNode &node)
 {
-	if (state.isPostfix()) {
+	if (state.isPrefix()) {
 		shared_ptr<CSGTerm> t1;
 		shared_ptr<PolySet> ps;
 		if (this->psevaluator) {
 			ps = this->psevaluator->getPolySet(node, true);
+			node.progress_report();
 		}
 		if (ps) {
 			t1 = evaluate_csg_term_from_ps(state, this->highlights, this->background, 
@@ -184,12 +188,12 @@ Response CSGTermEvaluator::visit(State &state, const RenderNode &node)
 		this->stored_term[node.index()] = t1;
 		addToParent(state, node);
 	}
-	return ContinueTraversal;
+	return PruneTraversal;
 }
 
 Response CSGTermEvaluator::visit(State &state, const CgaladvNode &node)
 {
-	if (state.isPostfix()) {
+	if (state.isPrefix()) {
 		shared_ptr<CSGTerm> t1;
     // FIXME: Calling evaluator directly since we're not a PolyNode. Generalize this.
 		shared_ptr<PolySet> ps;
@@ -199,20 +203,21 @@ Response CSGTermEvaluator::visit(State &state, const CgaladvNode &node)
 		if (ps) {
 			t1 = evaluate_csg_term_from_ps(state, this->highlights, this->background, 
 																		 ps, node.modinst, node);
+			node.progress_report();
 		}
 		this->stored_term[node.index()] = t1;
 		addToParent(state, node);
 	}
-	return ContinueTraversal;
+	return PruneTraversal;
 }
 
 /*!
 	Adds ourself to out parent's list of traversed children.
-	Call this for _every_ node which affects output during the postfix traversal.
+	Call this for _every_ node which affects output during traversal.
+    Usually, this should be called from the postfix stage, but for some nodes, we defer traversal letting other components (e.g. CGAL) render the subgraph, and we'll then call this from prefix and prune further traversal.
 */
 void CSGTermEvaluator::addToParent(const State &state, const AbstractNode &node)
 {
-	assert(state.isPostfix());
 	this->visitedchildren.erase(node.index());
 	if (state.parent()) {
 		this->visitedchildren[state.parent()->index()].push_back(&node);

@@ -4,7 +4,7 @@
 #include <QMainWindow>
 #include "ui_MainWindow.h"
 #include "openscad.h"
-#include "context.h"
+#include "modcontext.h"
 #include "module.h"
 #include "Tree.h"
 #include "memory.h"
@@ -35,9 +35,10 @@ public:
 
 	QTimer *autoReloadTimer;
 	std::string autoReloadId;
+	QTimer *waitAfterReloadTimer;
 
-	Context root_ctx;
-	Module *root_module;      // Result of parsing
+	ModuleContext top_ctx;
+	FileModule *root_module;      // Result of parsing
 	ModuleInstantiation root_inst;    // Top level instance
 	AbstractNode *absolute_root_node; // Result of tree evaluation
 	AbstractNode *root_node;          // Root if the root modifier (!) is used
@@ -60,6 +61,7 @@ public:
 	std::vector<shared_ptr<CSGTerm> > background_terms;
 	CSGChain *background_chain;
 	QString last_compiled_doc;
+	static QString qexamplesdir;
 
 	static const int maxRecentFiles = 10;
 	QAction *actionRecentFile[maxRecentFiles];
@@ -83,9 +85,8 @@ private:
 	void refreshDocument();
 	void updateTemporalVariables();
 	bool fileChangedOnDisk();
-	bool includesChanged();
-	bool compileTopLevelDocument(bool reload);
-	bool compile(bool reload, bool procevents);
+	void compileTopLevelDocument();
+	void compile(bool reload, bool forcedone = false);
 	void compileCSG(bool procevents);
 	bool maybeSave();
 	bool checkEditorModified();
@@ -108,6 +109,11 @@ private slots:
 	void actionSave();
 	void actionSaveAs();
 	void actionReload();
+	void actionShowLibraryFolder();
+
+	void instantiateRoot();
+	void compileDone(bool didchange);
+	void compileEnded();
 
 private slots:
 	void pasteViewportTranslation();
@@ -116,10 +122,13 @@ private slots:
 	void preferences();
 
 private slots:
-	void actionCompile();
+	void actionRenderCSG();
+	void csgRender();
+	void csgReloadRender();
 #ifdef ENABLE_CGAL
 	void actionRenderCGAL();
 	void actionRenderCGALDone(class CGAL_Nef_polyhedron *);
+	void cgalRender();
 #endif
 	void actionDisplayAST();
 	void actionDisplayCSGTree();
@@ -134,11 +143,13 @@ private slots:
 	void actionFlushCaches();
 
 public:
+	static void setExamplesDir(const QString &dir) { MainWindow::qexamplesdir = dir; }
 	void viewModeActionsUncheck();
 	void setCurrentOutput();
 	void clearCurrentOutput();
 
 public slots:
+	void actionReloadRenderCSG();
 #ifdef ENABLE_OPENCSG
 	void viewModeOpenCSG();
 #endif
@@ -171,13 +182,16 @@ public slots:
 	void helpManual();
 	void helpLibrary();
 	void quit();
-	void actionReloadCompile();
 	void checkAutoReload();
+	void waitAfterReload();
 	void autoReloadSet(bool);
 
 private:
 	static void report_func(const class AbstractNode*, void *vp, int mark);
 
+	char const * afterCompileSlot;
+	bool procevents;
+	
 	class ProgressWidget *progresswidget;
 	class CGALWorker *cgalworker;
 	QMutex consolemutex;
@@ -197,7 +211,7 @@ public:
 	static void unlock() { gui_locked--; }
 
 private:
-	static unsigned int gui_locked;
+ 	static unsigned int gui_locked;
 };
 
 #endif
