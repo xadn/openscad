@@ -55,7 +55,7 @@ void PRINT_NOCACHE(const std::string &msg)
 void PRINTD(const std::string &msg)
 {
 	if (debug) {
-		PRINT( msg );
+		PRINT( "DEBUG: " + msg );
 	}
 }
 

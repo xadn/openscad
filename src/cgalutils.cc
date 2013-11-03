@@ -12,12 +12,12 @@
 PolySet *createPolySetFromPolyhedron(const CGAL_Polyhedron &p)
 {
 	PolySet *ps = new PolySet();
-		
+
 	typedef CGAL_Polyhedron::Vertex                                 Vertex;
 	typedef CGAL_Polyhedron::Vertex_const_iterator                  VCI;
 	typedef CGAL_Polyhedron::Facet_const_iterator                   FCI;
 	typedef CGAL_Polyhedron::Halfedge_around_facet_const_circulator HFCC;
-		
+
 	for (FCI fi = p.facets_begin(); fi != p.facets_end(); ++fi) {
 		HFCC hc = fi->facet_begin();
 		HFCC hc_end = hc;
@@ -165,7 +165,6 @@ CGAL_Iso_rectangle_2e bounding_box( const CGAL_Nef_polyhedron2 &N )
 	CGAL_Nef_polyhedron2::Explorer explorer = N.explorer();
 	CGAL_Nef_polyhedron2::Explorer::Vertex_const_iterator vi;
 	std::vector<CGAL_Point_2e> points;
-	// can be optimized by rewriting bounding_box to accept vertices
 	for ( vi = explorer.vertices_begin(); vi != explorer.vertices_end(); ++vi )
 		if ( explorer.is_standard( vi ) )
 			points.push_back( explorer.point( vi ) );
@@ -176,10 +175,10 @@ CGAL_Iso_rectangle_2e bounding_box( const CGAL_Nef_polyhedron2 &N )
 
 void ZRemover::visit( CGAL_Nef_polyhedron3::Halffacet_const_handle hfacet )
 {
-	log << " <!-- ZRemover Halffacet visit. Mark: " << hfacet->mark() << " -->\n";
+	PRINTDB( " <!-- ZRemover Halffacet visit. Mark: %i -->",  hfacet->mark());
 	if ( hfacet->plane().orthogonal_direction() != this->up ) {
-		log << "  <!-- ZRemover down-facing half-facet. skipping -->\n";
-		log << " <!-- ZRemover Halffacet visit end-->\n";
+		PRINTD( "  <!-- ZRemover down-facing half-facet. skipping -->");
+		PRINTD( " <!-- ZRemover Halffacet visit end-->");
 		return;
 	}
 
@@ -189,7 +188,7 @@ void ZRemover::visit( CGAL_Nef_polyhedron3::Halffacet_const_handle hfacet )
 	int contour_counter = 0;
 	CGAL_forall_facet_cycles_of( fci, hfacet ) {
 		if ( fci.is_shalfedge() ) {
-			log << " <!-- ZRemover Halffacet cycle begin -->\n";
+			PRINTD( " <!-- ZRemover Halffacet cycle begin -->");
 			CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c1(fci), cend(c1);
 			std::vector<CGAL_Nef_polyhedron2::Explorer::Point> contour;
 			CGAL_For_all( c1, cend ) {
@@ -200,30 +199,30 @@ void ZRemover::visit( CGAL_Nef_polyhedron3::Halffacet_const_handle hfacet )
 			}
 			if (contour.size()==0) continue;
 
-			log << " <!-- is_simple_2:" << CGAL::is_simple_2( contour.begin(), contour.end() ) << " --> \n";
+			PRINTDB( " <!-- is_simple_2: %i -->", CGAL::is_simple_2( contour.begin(), contour.end() ) );
 
 			tmpnef2d.reset( new CGAL_Nef_polyhedron2( contour.begin(), contour.end(), boundary ) );
 
 			if ( contour_counter == 0 ) {
-				log << " <!-- contour is a body. make union(). " << contour.size() << " points. -->\n" ;
+				PRINTDB( " <!-- contour is a body. make union(). %i points. -->", contour.size());
 				*(output_nefpoly2d) += *(tmpnef2d);
 			} else {
-				log << " <!-- contour is a hole. make intersection(). " << contour.size() << " points. -->\n";
+				PRINTDB( " <!-- contour is a hole. make intersection(). %i points -->", contour.size());
 				*(output_nefpoly2d) *= *(tmpnef2d);
 			}
 
-			/*log << "\n<!-- ======== output tmp nef: ==== -->\n"
+			/*PRINTD( "\n<!-- ======== output tmp nef: ==== -->");
 				<< OpenSCAD::dump_svg( *tmpnef2d ) << "\n"
-				<< "\n<!-- ======== output accumulator: ==== -->\n"
+				<< "\n<!-- ======== output accumulator: ==== -->");
 				<< OpenSCAD::dump_svg( *output_nefpoly2d ) << "\n";*/
 
 			contour_counter++;
 		} else {
-			log << " <!-- ZRemover trivial facet cycle skipped -->\n";
+			PRINTD(" <!-- ZRemover trivial facet cycle skipped -->");
 		}
-		log << " <!-- ZRemover Halffacet cycle end -->\n";
+		PRINTD(" <!-- ZRemover Halffacet cycle end -->");
 	}
-	log << " <!-- ZRemover Halffacet visit end -->\n";
+	PRINTD(" <!-- ZRemover Halffacet visit end -->");
 }
 
 using namespace OpenSCAD;
@@ -252,8 +251,8 @@ TessBuilder::~TessBuilder()
 // called when Polyhedron.delegate() is called.
 void TessBuilder::operator()(CGAL_HDS& hds)
 {
+	PRINTD("TessBuilder operator()");
 	hds.clear();
-	std::cout << "TessBuilder operator()\n";
 	CGAL_Polybuilder B(hds, true);
 	std::vector<CGAL_HDS::Vertex::Point> vertices;
 	CGAL_Nef_polyhedron3::Vertex_const_iterator vi;
@@ -290,13 +289,13 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 		}
 		// first polygon = outer contour. next polygons = hole contours.
 		std::vector<CGAL_Polygon_3> pgons_without_holes;
-		std::cout << "pgon contours input: " << pgons.size() << std::endl;
+		PRINTDB("pgon contours input: %i", pgons.size());
 		if (pgons.size()>1)
 			facetess::tessellate( pgons, pgons_without_holes, faces_tess );
 		else
 			facetess::tessellate( pgons, pgons_without_holes, faces_w_holes_tess );
 
-		std::cout << "pgon contours output: " << pgons_without_holes.size() << "\n";
+		PRINTDB("pgon contours output: %i", pgons_without_holes.size());
 		for (size_t i=0;i<pgons_without_holes.size();i++) {
 			CGAL_Polygon_3 pgon = pgons_without_holes[i];
 			for (size_t j=0;j<pgon.size();j++) {
@@ -327,7 +326,6 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 void nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &N, CGAL_Polyhedron &P,
 	facetess::tesstype faces_tess, facetess::tesstype faces_with_holes_tess )
 {
-	std::cout << "convert " << faces_tess << " " << faces_with_holes_tess << "\n";
 	if (faces_tess == facetess::CGAL_NEF_STANDARD && faces_with_holes_tess == facetess::CGAL_NEF_STANDARD ) {
   		N.convert_to_Polyhedron( P );
 	}

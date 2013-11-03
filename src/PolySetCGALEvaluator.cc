@@ -27,9 +27,6 @@ PolySetCGALEvaluator::PolySetCGALEvaluator(CGALEvaluator &cgalevaluator)
 
 PolySet *PolySetCGALEvaluator::evaluatePolySet(const ProjectionNode &node)
 {
-	//openscad_loglevel = 6;
-	logstream log(5);
-
 	// Before projecting, union all children
 	CGAL_Nef_polyhedron sum;
 	BOOST_FOREACH (AbstractNode * v, node.getChildren()) {
@@ -47,9 +44,6 @@ PolySet *PolySetCGALEvaluator::evaluatePolySet(const ProjectionNode &node)
 			return new PolySet();
 		}
 	}
-
-	//std::cout << sum.dump();
-	//std::cout.flush();
 
 	CGAL_Nef_polyhedron nef_poly(2);
 
@@ -88,27 +82,27 @@ PolySet *PolySetCGALEvaluator::evaluatePolySet(const ProjectionNode &node)
 			return NULL;
 		}
 
-		log << OpenSCAD::svg_header( 480, 100000 ) << "\n";
+		PRINTDB( "%s", OpenSCAD::svg_header( 480, 100000 ) );
 		try {
-      ZRemover zremover;
-      CGAL_Nef_polyhedron3::Volume_const_iterator i;
-      CGAL_Nef_polyhedron3::Shell_entry_const_iterator j;
-      CGAL_Nef_polyhedron3::SFace_const_handle sface_handle;
-      for ( i = sum.p3->volumes_begin(); i != sum.p3->volumes_end(); ++i ) {
-        log << "<!-- volume. mark: " << i->mark() << " -->\n";
-        for ( j = i->shells_begin(); j != i->shells_end(); ++j ) {
-          log << "<!-- shell. mark: " << i->mark() << " -->\n";
-          sface_handle = CGAL_Nef_polyhedron3::SFace_const_handle( j );
-          sum.p3->visit_shell_objects( sface_handle , zremover );
-          log << "<!-- shell. end. -->\n";
-        }
-        log << "<!-- volume end. -->\n";
-      }
-      nef_poly.p2 = zremover.output_nefpoly2d;
-		}	catch (const CGAL::Failure_exception &e) {
+			ZRemover zremover;
+			CGAL_Nef_polyhedron3::Volume_const_iterator i;
+			CGAL_Nef_polyhedron3::Shell_entry_const_iterator j;
+			CGAL_Nef_polyhedron3::SFace_const_handle sface_handle;
+			for ( i = sum.p3->volumes_begin(); i != sum.p3->volumes_end(); ++i ) {
+				PRINTDB( "<!-- volume. mark: %s -->", i->mark() );
+				for ( j = i->shells_begin(); j != i->shells_end(); ++j ) {
+					PRINTDB( "<!-- shell. mark: %s -->", i->mark() );
+					sface_handle = CGAL_Nef_polyhedron3::SFace_const_handle( j );
+					sum.p3->visit_shell_objects( sface_handle , zremover );
+					PRINTD("<!-- shell. end. -->");
+				}
+				PRINTD("<!-- volume end. -->");
+			}
+			nef_poly.p2 = zremover.output_nefpoly2d;
+		} catch (const CGAL::Failure_exception &e) {
 			PRINTB("CGAL error in projection node while flattening: %s", e.what());
 		}
-		log << "</svg>\n";
+		PRINTD("</svg>");
 
 		CGAL::set_error_behaviour(old_behaviour);
 
@@ -197,7 +191,7 @@ PolySet *PolySetCGALEvaluator::evaluatePolySet(const ProjectionNode &node)
 	PolySet *ps = nef_poly.convertToPolyset();
 	assert( ps != NULL );
 	ps->convexity = node.convexity;
-	logstream(9) << ps->dump() << "\n";
+	PRINTDB( "%s", ps->dump() );
 
 	return ps;
 }

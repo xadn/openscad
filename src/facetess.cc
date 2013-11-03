@@ -120,15 +120,15 @@ void triangulate( std::vector<Polygon_2> &pgons, std::vector<Polygon_2> &output_
 	// assumes polygons are simple and holes are inside body.
 	CDTriangulation cdt;
 	PRINTD( "triangulation" );
-	PRINTD( "polygons in input: %i",pgons.size());
+	PRINTDB( "polygons in input: %i",pgons.size());
 
 	std::vector<CDT_Vertex_handle> vhandles;
 	for ( size_t i=0;i<pgons.size();i++ ) {
-		PRINTD( "inserting cdt, creating vhandle: " << i << "\n";
-		PRINTD( "points in pgon: " << pgons[i].size() << "\n";
+		PRINTDB( "inserting cdt, creating vhandle: %i ", i );
+		PRINTDB( "points in pgon: %i", pgons[i].size() );
 		vhandles.clear();
 		for ( size_t j=0;j<pgons[i].size();j++ ) {
-			PRINTD( "  " << pgons[i][j] << "\n";
+			PRINTDB( " %s", pgons[i][j] );;
 			vhandles.push_back( cdt.insert( pgons[i][j] ) );
 		}
 		for ( size_t k=0;k<vhandles.size();k++ ) {
@@ -140,28 +140,28 @@ void triangulate( std::vector<Polygon_2> &pgons, std::vector<Polygon_2> &output_
 
 	std::vector<CDT_Point> list_of_seeds;
 	for ( size_t i=1;i<pgons.size();i++ ) {
-		PRINTD( "generating seed for hole\n";
+		PRINTD( "generating seed for hole");
 		Iso_rectangle_2 bbox = bounding_box( pgons[i].vertices_begin(), pgons[i].vertices_end() );
-		PRINTD( "finding bounding box: " << bbox << "\n";
+		PRINTDB( "finding bounding box: %s", bbox );
 		CGAL::Random_points_in_iso_rectangle_2<Point_2> generator( bbox.min(), bbox.max() );
 		CDT_Point seedpt = *generator;
 		while( !inside( seedpt, pgons[i] ) ) {
 			generator++;
 			seedpt = *generator;
-			PRINTD( "checking inside:" << *generator << "\n";
+			PRINTDB( "checking inside: %s", *generator );
 		}
 		list_of_seeds.push_back( seedpt );
 	}
 
-	PRINTD( "# of seeds: " << list_of_seeds.size() << std::endl;
+	PRINTDB( "# of seeds: %i", list_of_seeds.size());
 
-	PRINTD( "Meshing..." << std::endl;
+	PRINTD( "Meshing..." );
 	CGAL::refine_Delaunay_mesh_2(
 	  cdt, list_of_seeds.begin(), list_of_seeds.end(), MeshCriteria());
 
 
-	PRINTD( "Meshed. Number of vertices: " << cdt.number_of_vertices() << std::endl;
-	PRINTD( "Number of finite faces: " << cdt.number_of_faces() << std::endl;
+	PRINTDB( "Meshed. Number of vertices: %i", cdt.number_of_vertices());
+	PRINTDB( "Number of finite faces: %i", cdt.number_of_faces());
 
 	//int mesh_faces_counter = 0;
 	CDTriangulation::Finite_faces_iterator fit;
@@ -201,7 +201,7 @@ void skeletonize( std::vector<Polygon_2> &pgons, std::vector<Polygon_2> &output_
 		}
 	}
 	else {
-		PRINTD( "construction of skeleton failed\n";
+		PRINTD( "construction of skeleton failed" );
 	}
 }
 
@@ -242,7 +242,7 @@ bool simple_check( Polygon_2 &pgon )
 		for ( size_t j=i;j<segs.size();j++ ) {
 			Segment_2 s2 = segs[j];
 			if ( s1 != s2 && CGAL::do_intersect( s1, s2 )) {
-				PRINTD( "segment intersection: " << s1 << "," << s2 << "\n";
+				PRINTDB( "segment intersection: %s %s", s1 % s2 );
 				return false;
 			}
 		}
@@ -260,7 +260,7 @@ tessellater_status do_tessellation(
 
 	std::vector<Polygon_3> &pgons = input_pgon3d;
 
-	PRINTD( "do_tessellation: input 3d pgons: " << pgons.size();
+	PRINTDB( "do_tessellation: input 3d pgons: %i", pgons.size());
 
 	// ---------------- project 3d down to 2d
 
@@ -270,7 +270,7 @@ tessellater_status do_tessellation(
 	// or xz plane. the "smallest" shadow tells us which 2d plane we want
 	// to project our polygon onto, xy, yz, or xz, so that it will be 'fattest'
 
-	PRINTD( "finding three non-collinear points, to find normal";
+	PRINTD( "finding three non-collinear points, to find normal");
 	if (pgons[0].size()<3) return BODY_LACKS_POINTS;
 	Point_3 p, q, r;
 	if (!find_noncollinear_pts( pgons[0], p, q, r ))
@@ -287,13 +287,13 @@ tessellater_status do_tessellation(
 	if (minshadow==xyshadow) projection = XY_PROJECTION;
 	else if (minshadow==yzshadow) projection = YZ_PROJECTION;
 	else projection = XZ_PROJECTION;
-	PRINTD( "shadowssize: xy, yz, xz:" << xyshadow << "," << yzshadow << "," << xzshadow << "\n";
-	PRINTD( "min shadow: " << minshadow << "\n";
+	PRINTDB( "shadowssize: xy, yz, xz: %i %i %i", xyshadow % yzshadow % xzshadow );
+	PRINTDB( "min shadow: %i", minshadow );
 
 	std::vector<Polygon_2> input_pgon2d;
 	std::map<Point_2,Point_3> vertmap;
 
-	PRINTD( "projecting into to 2d\n";
+	PRINTD( "projecting into to 2d" );
 	for (size_t i=0;i<pgons.size();++i) {
 		Polygon_3 tmppoly3d = pgons[i];
 		Polygon_2 tmppoly2d;
@@ -306,14 +306,14 @@ tessellater_status do_tessellation(
 				tmp2d = Point_2( tmp3d.x(), tmp3d.z() );
 			else if ( projection == YZ_PROJECTION )
 				tmp2d = Point_2( tmp3d.y(), tmp3d.z() );
-			PRINTD( "  " << tmp3d << " --> " << tmp2d << "\n";
+			PRINTDB( "%s --> %s", tmp3d % tmp2d );
 			vertmap[tmp2d] = tmp3d;
 			tmppoly2d.push_back( tmp2d );
 		}
 		input_pgon2d.push_back( tmppoly2d );
 	}
 
-	PRINTD( "checking orientation, fixing if necessary\n";
+	PRINTD( "checking orientation, fixing if necessary");
 	CGAL::Orientation original_body_orientation = input_pgon2d[0].orientation();
 	if (input_pgon2d[0].orientation() != CGAL::COUNTERCLOCKWISE)
 		input_pgon2d[0].reverse_orientation();
@@ -322,10 +322,10 @@ tessellater_status do_tessellation(
 			input_pgon2d[i].reverse_orientation();
 	}
 
-	PRINTD( "checking for simplicity, self-intersection, etc\n";
-	PRINTD( "is convex: " << input_pgon2d[0].is_convex() << "\n";
-	PRINTD( "is simple: " << input_pgon2d[0].is_simple() << "\n";
-	PRINTD( "is simple (oscad): " << simple_check(input_pgon2d[0]) << "\n";
+	PRINTD( "checking for simplicity, self-intersection, etc");
+	PRINTDB( "is convex: %i", input_pgon2d[0].is_convex() );
+	PRINTDB( "is simple: %i", input_pgon2d[0].is_simple() );
+	PRINTDB( "is simple (oscad): %i", simple_check(input_pgon2d[0]));
 	if (!input_pgon2d[0].is_simple()) return BODY_NOT_SIMPLE;
 	if (!simple_check(input_pgon2d[0])) return BODY_NOT_SIMPLE;
 	for (size_t i=1;i<input_pgon2d.size();i++) {
@@ -338,20 +338,20 @@ tessellater_status do_tessellation(
 	}
 
 
-	PRINTD( "tessellate into simple polygons-without-holes\n";
+	PRINTD( "tessellate into simple polygons-without-holes");
 	std::vector<Polygon_2> output_pgons2d;
 	if (tess==CONSTRAINED_DELAUNAY_TRIANGULATION)
 		triangulate( input_pgon2d, output_pgons2d );
 	else
 		skeletonize( input_pgon2d, output_pgons2d );
 
-	PRINTD( "fix orientation so the 3d normals will be OK\n";
+	PRINTD( "fix orientation so the 3d normals will be OK");
 	for (size_t i=0;i<output_pgons2d.size();i++) {
 		if (output_pgons2d[i].orientation() == original_body_orientation)
 			output_pgons2d[i].reverse_orientation();
 	}
 
-	PRINTD( "project from 2d back into 3d\n";
+	PRINTD( "project from 2d back into 3d");
 	for (size_t i=0;i<output_pgons2d.size();i++) {
 		Polygon_2 pgon2d = output_pgons2d[i];
 		Polygon_3 pgon3d;
@@ -383,7 +383,7 @@ tessellater_status do_tessellation(
 		}
 		output_pgons3d.push_back( pgon3d );
 	}
-	//PRINTD( debug.str() << std::endl;
+	//PRINTDB( debug.str() << std::endl;
 	return TESSELLATER_OK;
 }
 
@@ -394,13 +394,13 @@ tessellater_status OpenSCAD::facetess::tessellate(
         std::vector<CGAL_Polygon_3> &output_pgons3d,
         tesstype tess )
 {
-	PRINTD( "tessellate. tesstype: "  << tess << std::endl;
+	PRINTDB( "tessellate. tesstype: %i", tess );
 	CGAL::Cartesian_converter<CGAL_Kernel3,TessKernel> converter1;
 	CGAL::Cartesian_converter<TessKernel,CGAL_Kernel3> converter2;
 	std::vector<Polygon_3> tess_pgon3d;
 	std::vector<Polygon_3> tess_pgon3d_out;
-	PRINTD( "Input 3d points: "  << input_pgon3d.size() << std::endl;
-	PRINTD( "Converting points from CGAL_Kernel3 to TessKernel" << std::endl;
+	PRINTDB( "Input 3d points: %i", input_pgon3d.size());
+	PRINTD( "Converting points from CGAL_Kernel3 to TessKernel" );
 	for (size_t i=0;i<input_pgon3d.size();i++) {
 		CGAL_Polygon_3 oscad_pgon = input_pgon3d[i];
 		Polygon_3 tess_pgon;
@@ -408,15 +408,15 @@ tessellater_status OpenSCAD::facetess::tessellate(
 			CGAL_Point_3 oscad_point = oscad_pgon[j];
 			Point_3 tess_point = converter1( oscad_point );
 			tess_pgon.push_back( tess_point );
-			PRINTD( " " << oscad_point << " -> " << tess_point << "\n";
+			PRINTDB( " %s -> %s", oscad_point % tess_point );
 		}
 		tess_pgon3d.push_back( tess_pgon );
 	}
 
 	tessellater_status s = do_tessellation( tess_pgon3d, tess_pgon3d_out, tess );
-	PRINTD( "tessellated. status: " << s << std::endl;
+	PRINTDB( "tessellated. status: %i", s );
 	if (s!=TESSELLATER_OK) {
-		PRINTB("ERROR: Facet could not be tessellated using type %i", tesstype);
+		PRINTB("ERROR: Facet could not be tessellated using tesstype %i", tess);
 		PRINT("ERROR: Please modify the shape or use a different tessellater");
 	}
 
@@ -426,13 +426,11 @@ tessellater_status OpenSCAD::facetess::tessellate(
 		Polygon_3 tess_pgon = tess_pgon3d_out[i];
 		for (size_t j=0;j<tess_pgon.size();j++) {
 			Point_3 tess_point = tess_pgon[j];
-			PRINTD( tess_point << ",";
+			PRINTDB( "%s", tess_point );
 			CGAL_Point_3 oscad_point = converter2( tess_point );
 			oscad_pgon.push_back( oscad_point );
 		}
-		PRINTD( "\n";
 		output_pgons3d.push_back( oscad_pgon );
 	}
-	//PRINTD( debug.str() << std::endl;
 	return TESSELLATER_OK;
 }

@@ -90,23 +90,24 @@ fs::path find_valid_path(const fs::path &sourcepath,
 
 void parser_init(const std::string &applicationpath, bool isgui)
 {
-  // Add paths from OPENSCADPATH before adding built-in paths
+	(void)isgui;
+	// Add paths from OPENSCADPATH before adding built-in paths
 	const char *openscadpaths = getenv("OPENSCADPATH");
 	if (openscadpaths) {
 		std::string paths(openscadpaths);
-    typedef boost::split_iterator<std::string::iterator> string_split_iterator;
-    for (string_split_iterator it =
-					 make_split_iterator(paths, first_finder(":", boost::is_iequal()));
+		typedef boost::split_iterator<std::string::iterator> string_split_iterator;
+		for (string_split_iterator it =
+				make_split_iterator(paths, first_finder(":", boost::is_iequal()));
 				 it != string_split_iterator();
 				 ++it) {
-		add_librarydir(boosty::absolute(fs::path(boost::copy_range<std::string>(*it))).string());
-    }
+			add_librarydir(boosty::absolute(fs::path(boost::copy_range<std::string>(*it))).string());
+		}
 	}
 
 	// This is the built-in user-writable library path
 #ifndef OPENSCAD_TESTING
-  // This will resolve to ~/Documents on Mac, "My Documents" on Windows and
-  // ~/.local/share on Linux
+	// This will resolve to ~/Documents on Mac, "My Documents" on Windows and
+	// ~/.local/share on Linux
 	fs::path docdir(PlatformUtils::documentsPath());
 	add_librarydir(boosty::stringy(docdir / "OpenSCAD" / "libraries"));
 #endif
