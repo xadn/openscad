@@ -5,6 +5,7 @@
 std::list<std::string> print_messages_stack;
 OutputHandlerFunc *outputhandler = NULL;
 void *outputhandler_data = NULL;
+bool debug = true;
 
 void set_output_handler(OutputHandlerFunc *newhandler, void *userdata)
 {
@@ -48,6 +49,13 @@ void PRINT_NOCACHE(const std::string &msg)
 		fprintf(stderr, "%s\n", msg.c_str());
 	} else {
 		outputhandler(msg, outputhandler_data);
+	}
+}
+
+void PRINTD(const std::string &msg)
+{
+	if (debug) {
+		PRINT( msg );
 	}
 }
 

@@ -78,7 +78,7 @@ stl_point cgal_point_to_stl_point( const CGAL_Point_3 &p )
 	return pt;
 }
 
-std::vector<stl_triangle> get_cgal_poly_triangles( CGAL_Polyhedron &P )
+std::vector<stl_triangle> get_cgal_polyhedron_triangles( const CGAL_Polyhedron &P )
 {
 	std::vector<stl_triangle> triangles;
 /*
@@ -139,14 +139,18 @@ std::vector<stl_triangle> get_cgal_poly_triangles( CGAL_Polyhedron &P )
 	return triangles;
 }
 
-std::vector<stl_triangle> get_cgal_nef_poly_triangles( CGAL_Nef_polyhedron3 p3 )
+std::vector<stl_triangle> get_cgal_nef_poly_triangles( const CGAL_Nef_polyhedron3 &N, OpenSCAD::facetess::tesstype tess )
 {
+	if (tess!=OpenSCAD::facetess::CGAL_NEF_STANDARD && tess!=OpenSCAD::facetess::CONSTRAINED_DELAUNAY_TRIANGULATION) {
+		PRINT("WARNING: This format needs triangle tessellation. Using CGAL default.");
+		tess = OpenSCAD::facetess::CGAL_NEF_STANDARD; // force use of tessellator that generates triangles
+	}
 	std::vector<stl_triangle> triangles;
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 	try {
 		CGAL_Polyhedron P;
-		p3.convert_to_Polyhedron(P);
-		triangles = get_cgal_poly_triangles( P );
+		nef3_to_polyhedron( N, P, tess, tess );
+		triangles = get_cgal_polyhedron_triangles( P );
 	}
 	catch (CGAL::Assertion_exception e) {
 		PRINTB("CGAL error in CGAL_Nef_polyhedron3::convert_to_Polyhedron(): %s", e.what());
@@ -157,14 +161,15 @@ std::vector<stl_triangle> get_cgal_nef_poly_triangles( CGAL_Nef_polyhedron3 p3 )
 
 
 /*!
-	Saves the current 3D CGAL Nef polyhedron as STL to the given file.
-	The file must be open.
+  Saves the current 3D CGAL Nef polyhedron as STL to the given file.
+  The file must be open.
  */
-void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
+void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output, OpenSCAD::facetess::tesstype tess)
 {
 	output << "solid OpenSCAD_Model\n";
 	assert( root_N );
-	std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( *(root_N->p3) );
+	assert( root_N->p3 );
+	std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( *root_N->p3, tess );
 	BOOST_FOREACH( stl_triangle &t, triangles) {
 		output  << "\n facet normal " << t.normal.x << " " << t.normal.y << " " << t.normal.z
 			<< "\n    outer loop"
@@ -184,7 +189,7 @@ which is assumed to already have had vertexes written to it.
 CGAL Nef polyhedra Volumes are converted to AMF volumes.
 */
 void export_amf_volumes(CGAL_Nef_polyhedron *root_N, std::ostream &output,
-     std::map<stl_point,int> &vertexmap1)
+     std::map<stl_point,int> &vertexmap1, OpenSCAD::facetess::tesstype tess)
 {
 	// Volumes only work if we regularize the polyhedron first. See
 	// https://github.com/noelwarr/rgal/blob/master/cpp/rb_Nef_polyhedron_3.cpp
@@ -201,7 +206,7 @@ void export_amf_volumes(CGAL_Nef_polyhedron *root_N, std::ostream &output,
 			CGAL_forall_shells_of(shell_i, vol_i) {
 				CGAL_Nef_polyhedron3::SFace_const_handle sfch(shell_i);
 				CGAL_Nef_polyhedron3 sub_nef_poly(reg_nef_poly,sfch);
-				std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( sub_nef_poly );
+				std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( sub_nef_poly, tess );
 				BOOST_FOREACH(stl_triangle &t, triangles) {
 					output  << "  <triangle>\n"
 						<< "   <v1>" << vertexmap1[ t.p1 ] << "</v1>\n"
@@ -219,10 +224,10 @@ void export_amf_volumes(CGAL_Nef_polyhedron *root_N, std::ostream &output,
 Saves the current 3D CGAL Nef polyhedron as AMF to the given file.
 The file must be open.
 */
-void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
+void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output, OpenSCAD::facetess::tesstype tess)
 {
 	// based on code originally by LogXen
-	std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( *(root_N->p3) );
+	std::vector<stl_triangle> triangles = get_cgal_nef_poly_triangles( *root_N->p3, tess );
 
 	std::map<stl_point,int> vertexmap1;
 	std::map<int,stl_point> vertexmap2;
@@ -259,18 +264,20 @@ void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 			<< "  </coordinates></vertex>\n";
 	}
 	output << " </vertices>\n\n";
-	export_amf_volumes( root_N, output, vertexmap1 );
+	export_amf_volumes( root_N, output, vertexmap1, tess );
 	output  << " </mesh>\n"
 		<< " </object>\n"
 		<< "</amf>\n";
 }
 
-void export_off(CGAL_Nef_polyhedron *root_N, OpenSCAD::tessellation tess, std::ostream &output)
+void export_off(CGAL_Nef_polyhedron *root_N, std::ostream &output, OpenSCAD::facetess::tesstype tess)
 {
+	assert( root_N );
+	assert( root_N->p3 );
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 	try {
 		CGAL_Polyhedron P;
-		root_N->convertToPolyhedron( P, tess, tess );
+		nef3_to_polyhedron( *(root_N->p3), P, tess, tess );
 		output << P;
 	}
 	catch (const CGAL::Assertion_exception &e) {
@@ -280,7 +287,7 @@ void export_off(CGAL_Nef_polyhedron *root_N, OpenSCAD::tessellation tess, std::o
 }
 
 /*!
-	Saves the current 2D CGAL Nef polyhedron as DXF to the given absolute filename.
+ Saves the current 2D CGAL Nef polyhedron as DXF to the given absolute filename.
  */
 void export_dxf(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 {

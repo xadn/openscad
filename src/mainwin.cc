@@ -1,4 +1,4 @@
-/*
+ /*
  *  OpenSCAD (www.openscad.org)
  *  Copyright (C) 2009-2011 Clifford Wolf <clifford@clifford.at> and
  *                          Marius Kintel <marius@kintel.net>
@@ -78,7 +78,7 @@
 
 #include <fstream>
 
-#include <algorithm>
+#include <facetess.h>
 #include <boost/version.hpp>
 #include <boost/foreach.hpp>
 #include <boost/version.hpp>
@@ -1423,24 +1423,26 @@ void MainWindow::actionDisplayCSGProducts()
 	clearCurrentOutput();
 }
 
-OpenSCAD::tessellation choose_off_tess()
+OpenSCAD::facetess::tesstype choose_off_tess()
 {
+	OpenSCAD::facetess::tesstype tess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
 	QMessageBox mbox;
-	QPushButton *b1 = mbox.addButton(tr("CGAL Standard"),QMessageBox::ActionRole);
-	QPushButton *b2 = mbox.addButton(tr("Constrained Delaunay Triangulation"),QMessageBox::ActionRole);
-	QPushButton *b3 = mbox.addButton(tr("Straight Skeleton"),QMessageBox::ActionRole);
+	QPushButton *b1 = mbox.addButton("CGAL Standard",QMessageBox::ActionRole);
+	QPushButton *b2 = mbox.addButton("Constrained Delaunay Triangulation",QMessageBox::ActionRole);
+	QPushButton *b3 = mbox.addButton("Straight Skeleton",QMessageBox::ActionRole);
 	mbox.setText("Object File Format (OFF) export");
 	mbox.setInformativeText("Please choose face tessellation method");
 	mbox.setStandardButtons(QMessageBox::Cancel);
 	mbox.setDefaultButton( b1 );
 	int result = mbox.exec();
-	if (result==QMessageBox::Cancel) return;
+	if (result==QMessageBox::Cancel) return tess;
 	if (mbox.clickedButton()==b1)
-		return OpenSCAD::TESS_CGAL_NEF_STANDARD;
+		tess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
 	else if (mbox.clickedButton()==b2)
-		return OpenSCAD::TESS_CONSTRAINED_DELAUNAY_TRIANGULATION;
+		tess = OpenSCAD::facetess::CONSTRAINED_DELAUNAY_TRIANGULATION;
 	else if (mbox.clickedButton()==b3)
-		return OpenSCAD::TESS_STRAIGHT_SKELETON;
+		tess = OpenSCAD::facetess::STRAIGHT_SKELETON;
+	return tess;
 }
 
 #ifdef ENABLE_CGAL
@@ -1472,7 +1474,7 @@ void MainWindow::actionExport3d(export_type_e)
 		return;
 	}
 
-	OpenSCAD::tessellation tess = OpenSCAD::TESS_NONE;
+	OpenSCAD::facetess::tesstype facetess = OpenSCAD::facetess::NONE;
 	QString suffix;
 	QString stl_caption;
 	QString stl_filter;
@@ -1496,15 +1498,15 @@ void MainWindow::actionExport3d(export_type_e)
 			stl_filter = "OFF Files (*.off)";
 			stl_modename = "OFF";
 			suffix = ".off";
-			tess = choose_off_tess();
+			facetess = choose_off_tess();
 			break;
 	}
 
 
 	QString stl_filename = QFileDialog::getSaveFileName(this,
-			stl_caption,
-			this->fileName.isEmpty() ? "Untitled"+suffix : QFileInfo(this->fileName).baseName()+suffix,
-			stl_filter);
+		stl_caption,
+		this->fileName.isEmpty() ? "Untitled"+suffix : QFileInfo(this->fileName).baseName()+suffix,
+		stl_filter);
 	if (stl_filename.isEmpty()) {
 		PRINTB("No filename specified. %s export aborted.", stl_modename.toStdString());
 		clearCurrentOutput();
@@ -1518,14 +1520,14 @@ void MainWindow::actionExport3d(export_type_e)
 	else {
 		switch(stl_mode) {
 			case TYPE_STL:
-				export_stl(this->root_N, fstream);
+				export_stl(this->root_N, fstream, facetess);
 				break;
 			case TYPE_AMF:
-				export_amf(this->root_N, fstream);
+				export_amf(this->root_N, fstream, facetess);
 				break;
 			case TYPE_OFF:
 			default:
-				export_off(this->root_N, fstream, tess);
+				export_off(this->root_N, fstream, facetess);
 				break;
 		}
 		fstream.close();

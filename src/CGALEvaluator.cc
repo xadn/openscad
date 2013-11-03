@@ -296,23 +296,25 @@ difference() { translate([0,0,0.1]) scale(0.9) cylinder(); cylinder(); }
 	if ( node.subdiv_level == 0 ) return nef;
 
 	CGAL_Polyhedron ph,ph2;
-	OpenSCAD::tessellation solidface_tess = OpenSCAD::TESS_CGAL_NEF_STANDARD;
-	OpenSCAD::tessellation holeface_tess = OpenSCAD::TESS_CGAL_NEF_STANDARD;
-	nef.convertToPolyhedron( ph, solidface_tess, holeface_tess );
+	OpenSCAD::facetess::tesstype solidface_tess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
+	OpenSCAD::facetess::tesstype holeface_tess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
+	nef3_to_polyhedron( *(nef.p3), ph, solidface_tess, holeface_tess );
 
 	std::cout << "\n---- polyhedron begin --- \n" << ph << "\n---polyhedron end\n";
 
 	if (node.subdiv_type==SUBDIV_CATMULL_CLARK)
 		CatmullClark_subdivision( ph, node.subdiv_level );
-	else if (node.subdiv_type==SUBDIV_LOOP)
+	// none of these work
+/*	else if (node.subdiv_type==SUBDIV_LOOP)
+		//causes compiler errors.
 		Loop_subdivision( ph, node.subdiv_level );
 	else if (node.subdiv_type==SUBDIV_DOO_SABIN)
-		PRINT("WARNING: Doo Sabin surface subdivision not implemented");
 		//causes compiler errors.
-		//DooSabin_subdivision( ph, node.subdiv_level );
+		DooSabin_subdivision( ph, node.subdiv_level );
 	else if (node.subdiv_type==SUBDIV_SQRT3)
+		//causes compiler errors.
 		Sqrt3_subdivision( ph, node.subdiv_level );
-
+*/
 	// Convert the Polyhedron to a PolySet and back again.
 	// This prevents assertions in CGAL/Nef_3/polyhedron_3_to_nef_3.h
 	std::cout << "subdiv ran\n";

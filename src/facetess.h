@@ -4,13 +4,14 @@
 #include "cgal.h"
 
 namespace OpenSCAD {
+namespace facetess {
 
-typedef enum tessellation_e {
-	TESS_NONE,
-	TESS_CGAL_NEF_STANDARD, // internal to CGAL's Nef->Polyhedron converter
-	TESS_CONSTRAINED_DELAUNAY_TRIANGULATION,
-	TESS_STRAIGHT_SKELETON
-} tessellation;
+typedef enum tesstype_e {
+	NONE,
+	CGAL_NEF_STANDARD, // built-in to CGAL's NefPolyhedron->Polyhedron converter
+	CONSTRAINED_DELAUNAY_TRIANGULATION,
+	STRAIGHT_SKELETON
+} tesstype;
 
 typedef enum tessellater_status_e {
         TESSELLATER_OK,
@@ -27,8 +28,8 @@ typedef enum tessellater_status_e {
         PROJECTION_2D3D_FAILED,
 } tessellater_status;
 
-/* Tessellate the input polygon (with holes) into one or more output polygons
-   (without holes).
+/* Tessellate the input 3d polygon (with holes) into one or more output
+   3d polygons (without holes).
 
    The first Polygon_3 in the input represents the 'outline' or 'body' contour.
    If there are subsequent Polygon_3s in the input, they represent 'holes'.
@@ -37,10 +38,11 @@ typedef enum tessellater_status_e {
    The output is a sequence of Polygon_3, none of which will have holes.
 */
 tessellater_status tessellate(
-        std::vector<CGAL_Polygon_3> &input_pgon3d,
-        std::vector<CGAL_Polygon_3> &output_pgons3d,
-        tessellation tesstype );
+	std::vector<CGAL_Polygon_3> &input_pgon3d,
+	std::vector<CGAL_Polygon_3> &output_pgons3d,
+	tesstype tess );
 
+} // namespace facetess
 } // namespace OpenSCAD
 
 #endif

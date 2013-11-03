@@ -2,14 +2,17 @@
 #define CGALUTILS_H_
 
 #include <cgal.h>
+#include "svg.h"
+#include "printutils.h"
+#include "facetess.h"
+
 class PolySet *createPolySetFromPolyhedron(const CGAL_Polyhedron &p);
 CGAL_Polyhedron *createPolyhedronFromPolySet(const class PolySet &ps);
 CGAL_Iso_cuboid_3 bounding_box( const CGAL_Nef_polyhedron3 &N );
 CGAL_Iso_rectangle_2e bounding_box( const CGAL_Nef_polyhedron2 &N );
-
-
-#include "svg.h"
-#include "printutils.h"
+using namespace OpenSCAD::facetess;
+void nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &N, CGAL_Polyhedron &P,
+ tesstype facetess, tesstype faces_w_holes_tess );
 
 /*
 

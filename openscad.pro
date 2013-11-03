@@ -212,7 +212,7 @@ HEADERS += src/typedefs.h \
            src/dxfdata.h \
            src/dxfdim.h \
            src/dxftess.h \
-           src/tess3d.h \
+           src/facetess.h \
            src/export.h \
            src/expression.h \
            src/function.h \
@@ -331,7 +331,7 @@ SOURCES += src/version_check.cc \
            src/dxftess.cc \
            src/dxftess-glu.cc \
            src/dxftess-cgal.cc \
-           src/tess3d.cc \
+           src/facetess.cc \
            src/CSGTermEvaluator.cc \
            src/svg.cc \
            src/OffscreenView.cc \
@@ -378,7 +378,6 @@ SOURCES += src/cgalutils.cc \
            src/CGALCache.cc \
            src/CGALRenderer.cc \
            src/CGAL_Nef_polyhedron.cc \
-           src/CGAL_Nef_polyhedron_other.cc \
            src/CGAL_Nef_polyhedron_DxfData.cc \
            src/cgaladv_minkowski2.cc \
            src/cgalworker.cc

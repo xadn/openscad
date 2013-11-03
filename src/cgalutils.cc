@@ -3,6 +3,7 @@
 #include "cgalutils.h"
 #include "polyset.h"
 #include "printutils.h"
+#include "facetess.h"
 
 #include "cgal.h"
 
@@ -223,6 +224,120 @@ void ZRemover::visit( CGAL_Nef_polyhedron3::Halffacet_const_handle hfacet )
 		log << " <!-- ZRemover Halffacet cycle end -->\n";
 	}
 	log << " <!-- ZRemover Halffacet visit end -->\n";
+}
+
+using namespace OpenSCAD;
+
+class TessBuilder : public CGAL::Modifier_base<CGAL_HDS>
+{
+public:
+	facetess::tesstype faces_tess;
+	facetess::tesstype faces_w_holes_tess;
+	const CGAL_Nef_polyhedron3 &nef;
+	TessBuilder(const CGAL_Nef_polyhedron3 &N);
+	void operator()(CGAL_HDS& hds);
+	~TessBuilder();
+};
+
+TessBuilder::TessBuilder(const CGAL_Nef_polyhedron3 &N):nef(N)
+{
+	faces_tess=facetess::CGAL_NEF_STANDARD;
+	faces_w_holes_tess=facetess::CGAL_NEF_STANDARD;
+}
+
+TessBuilder::~TessBuilder()
+{
+}
+
+// called when Polyhedron.delegate() is called.
+void TessBuilder::operator()(CGAL_HDS& hds)
+{
+	hds.clear();
+	std::cout << "TessBuilder operator()\n";
+	CGAL_Polybuilder B(hds, true);
+	std::vector<CGAL_HDS::Vertex::Point> vertices;
+	CGAL_Nef_polyhedron3::Vertex_const_iterator vi;
+	std::map<CGAL_HDS::Vertex::Point,int> vertmap1;
+	std::map<CGAL_Nef_polyhedron3::Vertex_const_iterator,int> vertmap1a;
+	int vertcount = 0;
+
+	B.begin_surface(nef.number_of_vertices(), nef.number_of_facets());
+
+	CGAL_forall_vertices( vi, nef ) {
+		B.add_vertex( vi->point() );
+		vertmap1[ vi->point() ] = vertcount;
+		vertmap1a[ vi ] = vertcount;
+		vertcount++;
+	}
+
+	CGAL_Nef_polyhedron3::Halffacet_const_iterator hfaceti;
+	CGAL_forall_halffacets( hfaceti, nef ) {
+		std::cout << "iterating through next facet...\n";
+		if (hfaceti->incident_volume()->mark() == 0) continue;
+		//if (hfaceti->mark() == 0) continue;
+		CGAL_Nef_polyhedron3::Halffacet_cycle_const_iterator cyclei;
+		//int cycle_count = 0;
+		std::vector<CGAL_Polygon_3> pgons;
+		CGAL_forall_facet_cycles_of( cyclei, hfaceti ) {
+			CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c1(cyclei);
+			CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c2(c1);
+			CGAL_Polygon_3 pgon;
+			CGAL_For_all( c1, c2 ) {
+				pgon.push_back(c1->source()->source()->point());
+				//pgon.push_back(c1->source()->center_vertex());
+			}
+			pgons.push_back( pgon );
+		}
+		// first polygon = outer contour. next polygons = hole contours.
+		std::vector<CGAL_Polygon_3> pgons_without_holes;
+		std::cout << "pgon contours input: " << pgons.size() << std::endl;
+		if (pgons.size()>1)
+			facetess::tessellate( pgons, pgons_without_holes, faces_tess );
+		else
+			facetess::tessellate( pgons, pgons_without_holes, faces_w_holes_tess );
+
+		std::cout << "pgon contours output: " << pgons_without_holes.size() << "\n";
+		for (size_t i=0;i<pgons_without_holes.size();i++) {
+			CGAL_Polygon_3 pgon = pgons_without_holes[i];
+			for (size_t j=0;j<pgon.size();j++) {
+				CGAL_Point_3 point = pgon[j];
+				// add new points created by tessellation
+				if (vertmap1.count(point)==0) {
+					B.add_vertex( point );
+					vertmap1[ point ] = vertcount;
+					vertcount++;
+				}
+			}
+			B.begin_facet();
+			for (size_t j=0;j<pgon.size();j++) {
+				CGAL_Point_3 point = pgon[j];
+				int vert_index = vertmap1[ point ] ;
+				B.add_vertex_to_facet( vert_index );
+			}
+			B.end_facet();
+		}
+	}
+	B.end_surface();
+	hds.normalize_border();
+}
+
+/* Convert Nef Polyhedron3 to Polyhedron3 with custom face tessellation.
+   Faces-without-holes can be tessellated separately from faces-with-holes.
+*/
+void nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &N, CGAL_Polyhedron &P,
+	facetess::tesstype faces_tess, facetess::tesstype faces_with_holes_tess )
+{
+	std::cout << "convert " << faces_tess << " " << faces_with_holes_tess << "\n";
+	if (faces_tess == facetess::CGAL_NEF_STANDARD && faces_with_holes_tess == facetess::CGAL_NEF_STANDARD ) {
+  		N.convert_to_Polyhedron( P );
+	}
+	else {
+		P.clear();
+		TessBuilder builder( N );
+		builder.faces_tess = faces_tess;
+		builder.faces_w_holes_tess = faces_with_holes_tess;
+		P.delegate( builder );
+	}
 }
 
 #endif /* ENABLE_CGAL */

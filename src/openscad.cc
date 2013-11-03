@@ -195,7 +195,7 @@ Camera get_camera( po::variables_map vm )
 	return camera;
 }
 
-int cmdline(const char *deps_output_file, const std::string &filename, Camera &camera, const char *output_file, const fs::path &original_path, Render::type renderer, int argc, char ** argv )
+int cmdline(const char *deps_output_file, const std::string &filename, Camera &camera, const char *output_file, const fs::path &original_path, Render::type renderer, OpenSCAD::facetess::tesstype facetess, int argc, char ** argv )
 {
 #ifdef OPENSCAD_QTGUI
 	QCoreApplication app(argc, argv);
@@ -223,7 +223,7 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 	boost::algorithm::to_lower( suffix );
 
 	if (suffix == ".stl") stl_output_file = output_file;
-	if (suffix == ".amf") amf_output_file = output_file;
+	else if (suffix == ".amf") amf_output_file = output_file;
 	else if (suffix == ".off") off_output_file = output_file;
 	else if (suffix == ".dxf") dxf_output_file = output_file;
 	else if (suffix == ".csg") csg_output_file = output_file;
@@ -373,7 +373,7 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 				PRINTB("Can't open file \"%s\" for export", stl_output_file);
 			}
 			else {
-				export_stl(&root_N, fstream);
+				export_stl(&root_N, fstream, facetess);
 				fstream.close();
 			}
 		}
@@ -392,7 +392,7 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 				PRINTB("Can't open file \"%s\" for export", amf_output_file);
 			}
 			else {
-				export_amf(&root_N, fstream);
+				export_amf(&root_N, fstream, facetess);
 				fstream.close();
 			}
 		}
@@ -411,7 +411,7 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 				PRINTB("Can't open file \"%s\" for export", off_output_file);
 			}
 			else {
-				export_off(&root_N, fstream);
+				export_off(&root_N, fstream, facetess);
 				fstream.close();
 			}
 		}
@@ -583,7 +583,6 @@ int main(int argc, char **argv)
 
 	fs::path original_path = fs::current_path();
 
-	const char *filename = NULL;
 	const char *output_file = NULL;
 	const char *deps_output_file = NULL;
 
@@ -597,7 +596,7 @@ int main(int argc, char **argv)
 		("camera", po::value<string>(), "parameters for camera when exporting png")
 		("imgsize", po::value<string>(), "=width,height for exporting png")
 		("projection", po::value<string>(), "(o)rtho or (p)erspective when exporting png")
-		("tess3d", po::value<string>(), "3d surface tessellation=none|cgal|cdt|sskeleton")
+		("facetess", po::value<string>(), "3d surface tessellation=none|cgal|cdt|sskeleton")
 		("o,o", po::value<string>(), "out-file")
 		("s,s", po::value<string>(), "stl-file")
 		("x,x", po::value<string>(), "dxf-file")
@@ -624,13 +623,17 @@ int main(int argc, char **argv)
 		help(argv[0]);
 	}
 
-	Tessellation tess3d = CGAL_NEF_STANDARD;
-	if (vm.count("tess3d")) {
-		std::string tmp = vm["tess3d"].as<string>();
-		if (tmp=="none") tess3d = OpenSCAD::TESS_NONE;
-		else if (tmp=="plain") tess3d = OpenSCAD::TESS_CGAL_NEF_STANDARD;
-		else if (tmp=="cdt") tess3d = OpenSCAD::TESS_CONSTRAINED_DELAUNAY_TRIANGULATION;
-		else if (tmp=="sskeleton") tess3d = OpenSCAD::TESS_STRAIGHT_SKELETON;
+	OpenSCAD::facetess::tesstype facetess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
+	if (vm.count("facetess")) {
+		std::string tmp = vm["facetess"].as<string>();
+		if (tmp=="none") facetess = OpenSCAD::facetess::NONE;
+		else if (tmp=="default") facetess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
+		else if (tmp=="cdt") facetess = OpenSCAD::facetess::CONSTRAINED_DELAUNAY_TRIANGULATION;
+		else if (tmp=="sskeleton") facetess = OpenSCAD::facetess::STRAIGHT_SKELETON;
+		else {
+			PRINT("unknown face tessellation type requested. please try --help");
+			exit(1);
+		}
 	}
 	if (vm.count("help")) help(argv[0]);
 	if (vm.count("version")) version();
@@ -699,7 +702,7 @@ int main(int argc, char **argv)
 	}
 
 	if (cmdlinemode) {
-		rc = cmdline(deps_output_file, inputFiles[0], camera, output_file, original_path, renderer, argc, argv);
+		rc = cmdline(deps_output_file, inputFiles[0], camera, output_file, original_path, renderer, facetess, argc, argv);
 	}
 	else if (QtUseGUI()) {
 		rc = gui(inputFiles, original_path, argc, argv);
