@@ -271,8 +271,8 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 
 	CGAL_Nef_polyhedron3::Halffacet_const_iterator hfaceti;
 	CGAL_forall_halffacets( hfaceti, nef ) {
-		std::cout << "iterating through next facet...\n";
 		if (hfaceti->incident_volume()->mark() == 0) continue;
+		PRINTD("iterating through next facet...");
 		//if (hfaceti->mark() == 0) continue;
 		CGAL_Nef_polyhedron3::Halffacet_cycle_const_iterator cyclei;
 		//int cycle_count = 0;
@@ -318,6 +318,7 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 	}
 	B.end_surface();
 	hds.normalize_border();
+	PRINTD("TessBuilder operator() finished");
 }
 
 /* Convert Nef Polyhedron3 to Polyhedron3 with custom face tessellation.

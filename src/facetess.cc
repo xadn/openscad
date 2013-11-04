@@ -44,7 +44,7 @@ If polygon is 'thin' in x direction, every point is transformed like this:
 
 #include "facetess.h"
 #include "printutils.h"
-
+#define PRINTD_TAG __file
 using namespace OpenSCAD::facetess;
 
 #include <CGAL/Constrained_Delaunay_triangulation_2.h>
@@ -57,10 +57,11 @@ using namespace OpenSCAD::facetess;
 #include <CGAL/partition_2.h>
 #include <CGAL/connect_holes.h>
 #include <CGAL/enum.h>
-#include <CGAL/Straight_skeleton_builder_2.h>
+//#include <CGAL/Straight_skeleton_builder_2.h>
 #include <CGAL/intersections.h>
 #include <CGAL/bounding_box.h>
 #include <CGAL/Object.h>
+
 #include <CGAL/Segment_2.h>
 #include <CGAL/Segment_2_Segment_2_intersection.h>
 #include <iostream>
@@ -84,12 +85,14 @@ typedef CGAL::Partition_traits_2<TessKernel>::Polygon_2 Partition_Polygon_2;
 typedef Partition_Polygon_2::Vertex_iterator Partition_Vertex_iterator;
 typedef CGAL::Plane_3<TessKernel> Plane_3;
 typedef CGAL::Line_3<TessKernel> Line_3;
+
+/*
 typedef CGAL::Straight_skeleton_2<TessKernel> Ss;
 typedef boost::shared_ptr<Ss> SsPtr;
 typedef CGAL::Straight_skeleton_builder_traits_2<TessKernel> SsBuilderTraits;
 typedef CGAL::Straight_skeleton_builder_2<SsBuilderTraits,Ss> SsBuilder;
 typedef CGAL::Direction_3<TessKernel> Direction_3;
-
+*/
 typedef CGAL::Triangulation_vertex_base_2<TessKernel> Vertbase;
 typedef CGAL::Delaunay_mesh_face_base_2<TessKernel> Facebase;
 typedef CGAL::Triangulation_data_structure_2<Vertbase, Facebase> Tridatastruct;
@@ -178,6 +181,7 @@ void triangulate( std::vector<Polygon_2> &pgons, std::vector<Polygon_2> &output_
 }
 
 
+/*
 void skeletonize( std::vector<Polygon_2> &pgons, std::vector<Polygon_2> &output_pgons2d)
 {
 	SsBuilder ssb ;
@@ -205,6 +209,8 @@ void skeletonize( std::vector<Polygon_2> &pgons, std::vector<Polygon_2> &output_
 	}
 }
 
+*/
+
 typedef enum projection_type_e {
 	XY_PROJECTION,
 	XZ_PROJECTION,
@@ -227,9 +233,64 @@ bool find_noncollinear_pts( Polygon_3 &pgon, Point_3 &p, Point_3 &q, Point_3 &r 
 	return true;
 }
 
-// CGAL's is_simple() is buggy
+
+/*
+
+
+the problem.
+
+1. do CDT in high precision gmpq.
+
+2. CDT freezes on certain inputs
+
+3. the code is 'dropping' some faces from example models
+
+4. are some input triangles being sub-tessellated without needing to be?
+
+*/
+
+bool check_intersect( Segment_2 &s1, Segment_2 &s2 )
+{
+	Point_2 s1p0 = s1.point(0);
+	Point_2 s1p1 = s1.point(1);
+	Point_2 s2p0 = s2.point(0);
+	Point_2 s2p1 = s2.point(1);
+	std::stringstream s;
+	s << s1p0;
+	std::string cs1p0 = s.str();
+	s.str("");
+	s << s1p1;
+	std::string cs1p1 = s.str();
+	s.str("");
+	s << s2p0;
+	std::string cs2p0 = s.str();
+	s.str("");
+	s << s2p1;
+	std::string cs2p1 = s.str();
+	bool cs1 = (cs1p0==cs1p1);
+	bool cs2 = (cs2p0==cs2p1);
+	PRINTDB("check intersect. s1[%s,%s] s2[%s,%s]", s1p0%s1p1%s2p0%s2p1);
+	PRINTDB("s1 str comp %s %s ",cs1%cs2);
+	if (cs1) return true;
+	if (cs2) return true;
+	if (CGAL::do_intersect( s1, s2 )) {
+		PRINTDB("intersection detected. s1[%s,%s] s2[%s,%s]", s1p0%s1p1%s2p0%s2p1);
+		if (cs1p0==cs2p0||cs1p1==cs2p0||cs1p0==cs2p1||cs1p1==cs2p1) {
+			if ( (cs1p0==cs2p0&&cs1p1==cs2p1) || (cs1p0==cs2p1&&cs1p1==cs2p0) )
+			//if ( (s1p0==s2p0&&s1p1==s2p1) || (s1p0==s2p1&&s1p1==s2p0) )
+				return true;
+			else
+				return false;
+		}
+		return true;
+	}
+	return false;
+}
+
+// CGAL's is_simple() is buggy. this is very slow but it actually works.
 bool simple_check( Polygon_2 &pgon )
 {
+	if (pgon.size()<3) return false;
 	std::vector<Segment_2> segs;
 	for ( size_t i=0;i<pgon.size();i++ ) {
 		Point_2 p1 = pgon[i];
@@ -241,8 +302,8 @@ bool simple_check( Polygon_2 &pgon )
 		Segment_2 s1 = segs[i];
 		for ( size_t j=i;j<segs.size();j++ ) {
 			Segment_2 s2 = segs[j];
-			if ( s1 != s2 && CGAL::do_intersect( s1, s2 )) {
-				PRINTDB( "segment intersection: %s %s", s1 % s2 );
+			if ( i!=j && check_intersect( s1, s2 ) ) {
+				PRINTDB( "segments intersect: [%s] [%s]", s1 % s2 );
 				return false;
 			}
 		}
@@ -272,6 +333,7 @@ tessellater_status do_tessellation(
 
 	PRINTD( "finding three non-collinear points, to find normal");
 	if (pgons[0].size()<3) return BODY_LACKS_POINTS;
+	//if (pgons[0].size()==3) return TESSELLATER_OK; // orientation issue
 	Point_3 p, q, r;
 	if (!find_noncollinear_pts( pgons[0], p, q, r ))
 		return BODY_ONLY_COLLINEAR;
@@ -313,15 +375,6 @@ tessellater_status do_tessellation(
 		input_pgon2d.push_back( tmppoly2d );
 	}
 
-	PRINTD( "checking orientation, fixing if necessary");
-	CGAL::Orientation original_body_orientation = input_pgon2d[0].orientation();
-	if (input_pgon2d[0].orientation() != CGAL::COUNTERCLOCKWISE)
-		input_pgon2d[0].reverse_orientation();
-	for (size_t i=1;i<input_pgon2d.size();i++) {
-		if (input_pgon2d[i].orientation() != CGAL::CLOCKWISE)
-			input_pgon2d[i].reverse_orientation();
-	}
-
 	PRINTD( "checking for simplicity, self-intersection, etc");
 	PRINTDB( "is convex: %i", input_pgon2d[0].is_convex() );
 	PRINTDB( "is simple: %i", input_pgon2d[0].is_simple() );
@@ -337,13 +390,22 @@ tessellater_status do_tessellation(
 		}
 	}
 
+	PRINTD( "checking orientation, fixing if necessary");
+	// must come after simplicity check - orientation will crash
+	CGAL::Orientation original_body_orientation = input_pgon2d[0].orientation();
+	if (input_pgon2d[0].orientation() != CGAL::COUNTERCLOCKWISE)
+		input_pgon2d[0].reverse_orientation();
+	for (size_t i=1;i<input_pgon2d.size();i++) {
+		if (input_pgon2d[i].orientation() != CGAL::CLOCKWISE)
+			input_pgon2d[i].reverse_orientation();
+	}
 
 	PRINTD( "tessellate into simple polygons-without-holes");
 	std::vector<Polygon_2> output_pgons2d;
 	if (tess==CONSTRAINED_DELAUNAY_TRIANGULATION)
 		triangulate( input_pgon2d, output_pgons2d );
-	else
-		skeletonize( input_pgon2d, output_pgons2d );
+//	else
+//		skeletonize( input_pgon2d, output_pgons2d );
 
 	PRINTD( "fix orientation so the 3d normals will be OK");
 	for (size_t i=0;i<output_pgons2d.size();i++) {
@@ -383,17 +445,17 @@ tessellater_status do_tessellation(
 		}
 		output_pgons3d.push_back( pgon3d );
 	}
-	//PRINTDB( debug.str() << std::endl;
 	return TESSELLATER_OK;
 }
 
-// interface b/t openscad and this tessellationcode.
-// it has to convert each point to the tessellation CGAL kernel.
+// this function is the interface b/t openscad and the tessellater code.
 tessellater_status OpenSCAD::facetess::tessellate(
         std::vector<CGAL_Polygon_3> &input_pgon3d,
         std::vector<CGAL_Polygon_3> &output_pgons3d,
         tesstype tess )
 {
+	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
+	try {
 	PRINTDB( "tessellate. tesstype: %i", tess );
 	CGAL::Cartesian_converter<CGAL_Kernel3,TessKernel> converter1;
 	CGAL::Cartesian_converter<TessKernel,CGAL_Kernel3> converter2;
@@ -416,8 +478,13 @@ tessellater_status OpenSCAD::facetess::tessellate(
 	tessellater_status s = do_tessellation( tess_pgon3d, tess_pgon3d_out, tess );
 	PRINTDB( "tessellated. status: %i", s );
 	if (s!=TESSELLATER_OK) {
-		PRINTB("ERROR: Facet could not be tessellated using tesstype %i", tess);
-		PRINT("ERROR: Please modify the shape or use a different tessellater");
+		PRINT("ERROR: Tessellator was not able to process facet");
+		for (size_t i=0;i<tess_pgon3d.size();i++) {
+			for (size_t j=0;j<tess_pgon3d[i].size();j++) {
+				Point_3 tess_point = tess_pgon3d[i][j];
+				PRINTB("ERROR: %s", tess_point);
+			}
+		}
 	}
 
 	output_pgons3d.clear();
@@ -432,5 +499,10 @@ tessellater_status OpenSCAD::facetess::tessellate(
 		}
 		output_pgons3d.push_back( oscad_pgon );
 	}
+	} // try
+	catch (const CGAL::Assertion_exception &e) {
+		PRINTB("CGAL error in facetess::tessellate %s",e.what());
+	}
+	CGAL::set_error_behaviour(old_behaviour);
 	return TESSELLATER_OK;
 }
