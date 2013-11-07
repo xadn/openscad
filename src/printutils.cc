@@ -59,7 +59,9 @@ void PRINT_NOCACHE(const std::string &msg)
 void PRINTDEBUG(const std::string &msg)
 {
 	if (debug) {
-		PRINT( "DEBUG: " + msg );
+		fprintf(stderr, "%s\n", msg.c_str());
+		fflush(stderr);
+		//PRINT_NOCACHE( "DEBUG: " + msg );
 	}
 }
 

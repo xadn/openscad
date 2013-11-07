@@ -17,6 +17,10 @@ extern std::list<std::string> print_messages_stack;
 void print_messages_push();
 void print_messages_pop();
 
+// usage:
+// PRINT(" Outputting 3 points: ");
+// PRINTB("point0, point1, point2: %s %s %s", p0 % p1 % p2 );
+
 void PRINT(const std::string &msg);
 #define PRINTB(_fmt, _arg) do { PRINT(str(boost::format(_fmt) % _arg)); } while (0)
 
