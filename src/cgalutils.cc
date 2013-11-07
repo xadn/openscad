@@ -303,9 +303,9 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 
 
 	CGAL_Polybuilder B(hds, true);
-	PRINTD("TessBuilder - build Polyhedron");
+	PRINTD("Tess Polyhedron Builder");
 	B.begin_surface(vertlist.size(), newpgons.size() );
-	PRINTD("TessBuilder: Index build");
+	PRINTD(" Index build");
 	for (size_t i=0;i<vertlist.size();i++) {
 		B.add_vertex( vertlist[i] );
 		PRINTDB("%i:%s",i%vertlist[i]);
@@ -328,6 +328,7 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 		B.end_facet();
 	}
 	B.end_surface();
+	PRINTD("Tess Polyhedron Builder finished");
 	hds.normalize_border();
 	PRINTD("TessBuilder operator() finished");
 }

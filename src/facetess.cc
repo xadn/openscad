@@ -69,29 +69,34 @@ using namespace OpenSCAD::facetess;
 //#include <CGAL/Exact_predicates_inexact_constructions_kernel.h>
 //typedef CGAL::Exact_predicates_inexact_constructions_kernel TessKernel;
 
+/* CGAL's Delaunay requires a kernel with square root, which means
+ either the very inaccurate 'double' number type, or the extremely
+ slow CORE::Expr type?
+
+ So we try this. Use two kernels. one for 3d, one for 2d.
+*/
+
 #include <CGAL/Exact_predicates_exact_constructions_kernel_with_sqrt.h>
-typedef CGAL::Exact_predicates_exact_constructions_kernel_with_sqrt TessKernel;
+typedef CGAL::Exact_predicates_exact_constructions_kernel_with_sqrt TessKernel2d;
 
-//#include <CGAL/Simple_cartesian.h>
-//typedef CGAL::Simple_cartesian<CORE::BigRational> TessKernel;
+#include <CGAL/Cartesian.h>
+typedef CGAL::Cartesian<CGAL::Gmpq> TessKernel3d;
 
-// CGAL delaunay and Skeleton are picky about kernels
-
-typedef TessKernel::Point_2 TK_Point_2;
-typedef TessKernel::Segment_2 TK_Segment_2;
-typedef TessKernel::Point_3 TK_Point_3;
-typedef TessKernel::Vector_3 TK_Vector_3;
+typedef TessKernel2d::Point_2 TK_Point_2;
+typedef TessKernel2d::Segment_2 TK_Segment_2;
+typedef TessKernel3d::Point_3 TK_Point_3;
+typedef TessKernel3d::Vector_3 TK_Vector_3;
 //typedef TessKernel::Vector_2 TK_Vector_2;
-typedef CGAL::Polygon_2<TessKernel> TK_Polygon_2;
+typedef CGAL::Polygon_2<TessKernel2d> TK_Polygon_2;
 typedef std::vector<TK_Point_3> TK_Polygon_3;
-typedef CGAL::Aff_transformation_2<TessKernel> Aff_transformation_2;
+typedef CGAL::Aff_transformation_2<TessKernel2d> Aff_transformation_2;
 //typedef CGAL::Iso_cuboid_3<TessKernel> TK_Iso_cuboid_3;
 //typedef CGAL::Polygon_2<TessKernel>::Vertex_iterator TK_Vertex_iterator;
-typedef CGAL::Polygon_with_holes_2<TessKernel> Polygon_with_holes_2;
-typedef CGAL::Partition_traits_2<TessKernel>::Polygon_2 Partition_Polygon_2;
+typedef CGAL::Polygon_with_holes_2<TessKernel2d> Polygon_with_holes_2;
+typedef CGAL::Partition_traits_2<TessKernel2d>::Polygon_2 Partition_Polygon_2;
 //typedef Partition_Polygon_2::Vertex_iterator Partition_Vertex_iterator;
-typedef CGAL::Plane_3<TessKernel> TK_Plane_3;
-typedef CGAL::Line_3<TessKernel> TK_Line_3;
+typedef CGAL::Plane_3<TessKernel3d> TK_Plane_3;
+typedef CGAL::Line_3<TessKernel3d> TK_Line_3;
 
 /*
 typedef CGAL::Straight_skeleton_2<TessKernel> Ss;
@@ -100,15 +105,45 @@ typedef CGAL::Straight_skeleton_builder_traits_2<TessKernel> SsBuilderTraits;
 typedef CGAL::Straight_skeleton_builder_2<SsBuilderTraits,Ss> SsBuilder;
 */
 
-typedef CGAL::Direction_3<TessKernel> Direction_3;
-typedef CGAL::Triangulation_vertex_base_2<TessKernel> Vertbase;
-typedef CGAL::Delaunay_mesh_face_base_2<TessKernel> Facebase;
+typedef CGAL::Direction_3<TessKernel3d> Direction_3;
+typedef CGAL::Triangulation_vertex_base_2<TessKernel2d> Vertbase;
+typedef CGAL::Delaunay_mesh_face_base_2<TessKernel2d> Facebase;
 typedef CGAL::Triangulation_data_structure_2<Vertbase, Facebase> Tridatastruct;
-typedef CGAL::Constrained_Delaunay_triangulation_2<TessKernel, Tridatastruct> CDTriangulation;
+typedef CGAL::Constrained_Delaunay_triangulation_2<TessKernel2d, Tridatastruct> CDTriangulation;
 typedef CGAL::Delaunay_mesh_size_criteria_2<CDTriangulation> MeshCriteria;
 typedef CDTriangulation::Vertex_handle CDT_Vertex_handle;
 typedef CDTriangulation::Point CDT_Point;
-typedef CGAL::Iso_rectangle_2<TessKernel> Iso_rectangle_2;
+typedef CGAL::Iso_rectangle_2<TessKernel2d> Iso_rectangle_2;
+
+
+/*
+Converters: Convert the number types for the coordinates
+
+OpenSCAD has mostly historically used GMPQ as it's number type for CGAL.
+GMPQ is a rational type, i.e. the ratio of two 'big integers' (gmpz).
+
+CORE::Expr is a very cool symbolic number type that can do 'as good' as
+GMPQ, but is also usable by Delaunay (perhaps because it has square roots)
+
+*/
+
+TessKernel2d::FT converter1( const TessKernel3d::FT &in )
+{
+	std::stringstream tmp;
+	tmp << in;
+	CORE::BigRat tmp2( tmp.str() );
+	CORE::Expr out(tmp2);
+	return out;
+}
+
+TessKernel3d::FT converter2( const TessKernel2d::FT &in )
+{
+	PRINTD("converter2 start");
+	double tmp = in.doubleValue();
+	TessKernel3d::FT out( tmp );
+	PRINTD("converter2 end");
+	return out;
+}
 
 template <class T> class DummyCriteria {
 public:
@@ -343,6 +378,9 @@ bool simple_check( TK_Polygon_2 &pgon )
 	return true;
 }
 
+std::string tostr(const TK_Point_2 &p) {std::stringstream s; s<<p; return s.str();}
+std::string tostr(const TK_Point_3 &p){std::stringstream s;s<<p;return s.str();}
+
 tessellater_status do_tessellation(
 	std::vector<TK_Polygon_3> &input_pgon3d,
 	std::vector<TK_Polygon_3> &output_pgons3d,
@@ -372,10 +410,10 @@ tessellater_status do_tessellation(
 	projection_type projection;
 	normal = CGAL::normal(p,q,r);
 
-	TessKernel::FT xyshadow = normal.x()*normal.x()+normal.y()*normal.y();
-	TessKernel::FT yzshadow = normal.y()*normal.y()+normal.z()*normal.z();
-	TessKernel::FT xzshadow = normal.x()*normal.x()+normal.z()*normal.z();
-	TessKernel::FT minshadow = std::min( xyshadow, std::min( yzshadow, xzshadow ) );
+	TessKernel3d::FT xyshadow = normal.x()*normal.x()+normal.y()*normal.y();
+	TessKernel3d::FT yzshadow = normal.y()*normal.y()+normal.z()*normal.z();
+	TessKernel3d::FT xzshadow = normal.x()*normal.x()+normal.z()*normal.z();
+	TessKernel3d::FT minshadow = std::min( xyshadow, std::min( yzshadow, xzshadow ) );
 	if (minshadow==xyshadow) projection = XY_PROJECTION;
 	else if (minshadow==yzshadow) projection = YZ_PROJECTION;
 	else projection = XZ_PROJECTION;
@@ -383,7 +421,8 @@ tessellater_status do_tessellation(
 	PRINTDB( "min shadow: %i", minshadow );
 
 	std::vector<TK_Polygon_2> input_pgon2d;
-	std::map<TK_Point_2,TK_Point_3> vertmap;
+	//std::map<TK_Point_2,TK_Point_3> vertmap;
+	std::map<std::string,TK_Point_3> vertmap;
 
 	PRINTD( "projecting into to 2d" );
 	for (size_t i=0;i<pgons.size();++i) {
@@ -392,23 +431,27 @@ tessellater_status do_tessellation(
 		for (size_t j=0;j<tmppoly3d.size();++j) {
 			TK_Point_3 tmp3d = tmppoly3d[j];
 			TK_Point_2 tmp2d;
+			TessKernel2d::FT x = converter1( tmp3d.x() );
+			TessKernel2d::FT y = converter1( tmp3d.y() );
+			TessKernel2d::FT z = converter1( tmp3d.z() );
 			if ( projection == XY_PROJECTION )
-				tmp2d = TK_Point_2( tmp3d.x(), tmp3d.y() );
+				tmp2d = TK_Point_2( x, y);
 			else if ( projection == XZ_PROJECTION )
-				tmp2d = TK_Point_2( tmp3d.x(), tmp3d.z() );
+				tmp2d = TK_Point_2( x, z );
 			else if ( projection == YZ_PROJECTION )
-				tmp2d = TK_Point_2( tmp3d.y(), tmp3d.z() );
+				tmp2d = TK_Point_2( y, z );
 			PRINTDB( "%s --> %s", tmp3d % tmp2d );
-			vertmap[tmp2d] = tmp3d;
+			vertmap[tostr( tmp2d )] = tmp3d;
 			tmppoly2d.push_back( tmp2d );
 		}
 		input_pgon2d.push_back( tmppoly2d );
 	}
 
+	PRINTDB("holes: %i", (input_pgon2d.size()-1) );
 	PRINTD( "checking for simplicity, self-intersection, etc");
 	PRINTDB( "is convex: %i", input_pgon2d[0].is_convex() );
 	PRINTDB( "is simple: %i", input_pgon2d[0].is_simple() );
-	PRINTDB( "is simple (oscad): %i", simple_check(input_pgon2d[0]));
+	//PRINTDB( "is simple (oscad): %i", simple_check(input_pgon2d[0]));
 	if (!input_pgon2d[0].is_simple()) return BODY_NOT_SIMPLE;
 	//if (!simple_check(input_pgon2d[0])) return BODY_NOT_SIMPLE;
 	for (size_t i=1;i<input_pgon2d.size();i++) {
@@ -445,31 +488,40 @@ tessellater_status do_tessellation(
 
 	PRINTD( "project from 2d back into 3d");
 	for (size_t i=0;i<output_pgons2d.size();i++) {
+		PRINTDB(" polygon %i",i);
 		TK_Polygon_2 pgon2d = output_pgons2d[i];
 		TK_Polygon_3 pgon3d;
 		for (size_t j=0;j<pgon2d.size();j++) {
 			TK_Point_2 pt2d = pgon2d[j];
+			PRINTDB("  pt %s",pt2d);
 			TK_Point_3 pt3d;
-			if (vertmap.count( pt2d )) {
-				pt3d = vertmap[ pt2d ];
+			if (vertmap.count( tostr(pt2d) )) {
+				PRINTD("  cached mapping back to 3d");
+				pt3d = vertmap[ tostr(pt2d) ];
 			} else {
+				PRINTDB("  pt %s, not cached..calculating 3d...",pt2d);
 				TK_Line_3 line3d;
+				TessKernel3d::FT x = converter2( pt2d.x() );
+				TessKernel3d::FT y = converter2( pt2d.y() );
 				if ( projection == XY_PROJECTION ) {
-					TK_Point_3 tmp3d = TK_Point_3( pt2d.x(), pt2d.y(), 0 );
+					TK_Point_3 tmp3d = TK_Point_3( x,y,0 );
 					line3d = TK_Line_3( tmp3d, Direction_3(0,0,1) );
 				} else if ( projection == XZ_PROJECTION ) {
-					TK_Point_3 tmp3d = TK_Point_3( pt2d.x(), 0, pt2d.y() );
+					TK_Point_3 tmp3d = TK_Point_3( x,0,y );
 					line3d = TK_Line_3( tmp3d, Direction_3(0,1,0) );
 				} else if ( projection == YZ_PROJECTION ) {
-					TK_Point_3 tmp3d = TK_Point_3( 0, pt2d.x(), pt2d.y() );
+					TK_Point_3 tmp3d = TK_Point_3( 0,x,y );
 					line3d = TK_Line_3( tmp3d, Direction_3(1,0,0) );
 				}
 				CGAL::Object obj = CGAL::intersection( line3d, polygon_plane3d );
 				const TK_Point_3 *point_test = CGAL::object_cast<TK_Point_3>(&obj);
-				if (point_test)
+				if (point_test) {
 					pt3d = *point_test;
-				else
+					PRINTDB(" 3d point: %s",pt3d);
+					vertmap[ tostr(pt2d) ] = pt3d;
+				} else {
 					return PROJECTION_2D3D_FAILED;
+				}
 			}
 			pgon3d.push_back( pt3d );
 		}
@@ -477,79 +529,6 @@ tessellater_status do_tessellation(
 	}
 	return TESSELLATER_OK;
 }
-
-/*
-Converters: Convert the number types for the coordinates of a single 3d
-point. This is required because CGAL's Delaunay algorithms only can use
-certain types of kernel number types, like double or CORE:EXPR. double
-is usable, but its not very precise which can cause issues.
-
-Note: If you change the Kernel and Numbertype in cgal.h, you need to
-modify these converter functions too.
-
-OpenSCAD has mostly historically used GMPQ as it's number type for CGAL.
-GMPQ is a rational type, i.e. the ratio of two 'big integers' (gmpz).
-
-CORE::Expr is a very cool symbolic number type that can do 'as good' as
-GMPQ, but is also usable by Delaunay (perhaps because it has square roots)
-
-*/
-
-TK_Point_3 converter1( CGAL_Point_3 p3 )
-{
-	std::stringstream tmp;
-
-	tmp << p3.x();
-	CORE::BigRat xm( tmp.str() );
-	tmp.str("");
-
-	tmp << p3.y();
-	CORE::BigRat ym( tmp.str() );
-	tmp.str("");
-	tmp << p3.z();
-	CORE::BigRat zm( tmp.str() );
-	tmp.str("");
-
-	CORE::Expr xout(xm);
-	CORE::Expr yout(ym);
-	CORE::Expr zout(zm);
-
-	TK_Point_3 p( xout, yout, zout );
-	return p;
-
-/*	TessKernel::FT x( CGAL::to_double(p3.x().numerator())/CGAL::to_double(p3.x().denominator()) );
-	TessKernel::FT y( CGAL::to_double(p3.y().numerator())/CGAL::to_double(p3.y().denominator()) );
-	TessKernel::FT z( CGAL::to_double(p3.z().numerator())/CGAL::to_double(p3.z().denominator()) );
-	TK_Point_3 p( x,y,z );
-	return p;
-*/
-}
-
-CGAL_Point_3 converter2( TK_Point_3 p3 )
-{
-
-	std::stringstream tmp;
-
-	CORE::BigRat xm( p3.x().doubleValue() );
-	CORE::BigRat ym( p3.y().doubleValue() );
-	CORE::BigRat zm( p3.z().doubleValue() );
-
-	tmp << xm;
-	CGAL::Gmpq xout(tmp.str());
-	tmp.str("");
-	tmp << ym;
-	CGAL::Gmpq yout(tmp.str());
-	tmp.str("");
-	tmp << zm;
-	CGAL::Gmpq zout(tmp.str());
-	tmp.str("");
-
-	CGAL_Point_3 p( xout, yout, zout );
-	return p;
-}
-
-std::map<TK_Point_3,CGAL_Point_3> kernel_vertmap1;
-std::map<CGAL_Point_3,TK_Point_3> kernel_vertmap2;
 
 // this function is the interface b/t openscad and the tessellater code.
 tessellater_status OpenSCAD::facetess::tessellate(
@@ -560,36 +539,18 @@ tessellater_status OpenSCAD::facetess::tessellate(
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 	try {
 	PRINTDB( "tessellate. tesstype: %i", tess );
-	//CGAL::Cartesian_converter<CGAL_Kernel3,TessKernel> converter1;
-	//CGAL::Cartesian_converter<TessKernel,CGAL_Kernel3> converter2;
-	std::vector<TK_Polygon_3> tess_pgon3d;
 	std::vector<TK_Polygon_3> tess_pgon3d_out;
-	PRINTDB( "Input 3d points: %i", input_pgon3d.size());
-	PRINTD( "Converting points from CGAL_Kernel3 to TessKernel" );
-	for (size_t i=0;i<input_pgon3d.size();i++) {
-		CGAL_Polygon_3 oscad_pgon = input_pgon3d[i];
-		TK_Polygon_3 tess_pgon;
-		for (size_t j=0;j<oscad_pgon.size();j++) {
-			CGAL_Point_3 oscad_point = oscad_pgon[j];
-			TK_Point_3 tess_point = converter1( oscad_point );
-			tess_pgon.push_back( tess_point );
-			kernel_vertmap1[tess_point] = oscad_point;
-			PRINTDB( " %s -> %s", oscad_point % tess_point );
-		}
-		tess_pgon3d.push_back( tess_pgon );
-	}
-
-	tessellater_status s = do_tessellation( tess_pgon3d, tess_pgon3d_out, tess );
+	tessellater_status s = do_tessellation( input_pgon3d, tess_pgon3d_out, tess );
 	PRINTDB( "tessellated. status: %i", s );
 	if (s!=TESSELLATER_OK) {
 		PRINT("WARNING: Tessellator was not able to process facet");
-		for (size_t i=0;i<tess_pgon3d.size();i++) {
-			for (size_t j=0;j<tess_pgon3d[i].size();j++) {
-				TK_Point_3 tess_point = tess_pgon3d[i][j];
+		for (size_t i=0;i<input_pgon3d.size();i++) {
+			for (size_t j=0;j<input_pgon3d[i].size();j++) {
+				TK_Point_3 tess_point = input_pgon3d[i][j];
 				PRINTB("WARNING: %s", tess_point);
 			}
 		}
-		tess_pgon3d_out = tess_pgon3d;
+		tess_pgon3d_out = input_pgon3d;
 	}
 
 	output_pgons3d.clear();
@@ -597,19 +558,11 @@ tessellater_status OpenSCAD::facetess::tessellate(
 	for (size_t i=0;i<tess_pgon3d_out.size();i++) {
 		CGAL_Polygon_3 oscad_pgon;
 		TK_Polygon_3 tess_pgon = tess_pgon3d_out[i];
-		PRINTDB( "pgon %i", i );
+		PRINTDB( "Polygon %i", i );
 		for (size_t j=0;j<tess_pgon.size();j++) {
 			TK_Point_3 tess_point = tess_pgon[j];
 			CGAL_Point_3 oscad_point;
-			PRINTDB( "%i : %s", j%tess_point );
-			if (kernel_vertmap1.count(tess_point)) {
-				oscad_point = kernel_vertmap1[tess_point];
-				PRINTDB( " point was saved in kernel vertex map: %s", oscad_point );
-			} else {
-				PRINTD( " point not in kernel vertex map. converting" );
-				oscad_point = converter2( tess_point );
-				PRINTDB( " new point: %s", oscad_point );
-			}
+			oscad_point = tess_point;
 			oscad_pgon.push_back( oscad_point );
 		}
 		output_pgons3d.push_back( oscad_pgon );

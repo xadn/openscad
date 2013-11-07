@@ -51,6 +51,7 @@ void PRINT_NOCACHE(const std::string &msg)
 	if (msg.empty()) return;
 	if (!outputhandler) {
 		fprintf(stderr, "%s\n", msg.c_str());
+		fflush(stderr);
 	} else {
 		outputhandler(msg, outputhandler_data);
 	}
@@ -59,9 +60,8 @@ void PRINT_NOCACHE(const std::string &msg)
 void PRINTDEBUG(const std::string &msg)
 {
 	if (debug) {
-		fprintf(stderr, "%s\n", msg.c_str());
-		fflush(stderr);
-		//PRINT_NOCACHE( "DEBUG: " + msg );
+		fprintf(stderr,("DEBUG: " + msg + "\n").c_str() );
+		//PRINT( "DEBUG: " + msg );
 	}
 }
 
