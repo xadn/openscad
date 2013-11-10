@@ -26,6 +26,8 @@ typedef enum tessellater_status_e {
         HOLE_LACKS_POINTS,
         HOLE_NOT_COPLANAR,
         PROJECTION_2D3D_FAILED,
+	CGAL_ERROR,
+	CANNOT_EARCLIP_HOLE,
 } tessellater_status;
 
 /* Tessellate the input 3d polygon (with holes) into one or more output

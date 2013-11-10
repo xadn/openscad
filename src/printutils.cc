@@ -5,11 +5,7 @@
 std::list<std::string> print_messages_stack;
 OutputHandlerFunc *outputhandler = NULL;
 void *outputhandler_data = NULL;
-#ifdef DEBUG
-bool debug = true;
-#else
-bool debug = false;
-#endif
+bool OpenSCAD::debug = false;
 
 void set_output_handler(OutputHandlerFunc *newhandler, void *userdata)
 {
@@ -59,7 +55,10 @@ void PRINT_NOCACHE(const std::string &msg)
 
 void PRINTDEBUG(const std::string &msg)
 {
-	if (debug) {
+	// what if.. we could at cmdline say --debug=CGAL_Nef_polyhedron.cc
+	// and it would only dump DEBUG from that file?
+	// is that possible? even more, what about regex case-insense a str
+	if (OpenSCAD::debug) {
 		fprintf(stderr,("DEBUG: " + msg + "\n").c_str() );
 		//PRINT( "DEBUG: " + msg );
 	}

@@ -270,19 +270,20 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 			CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c2(c1);
 			CGAL_Polygon_3 pgon;
 			CGAL_For_all( c1, c2 ) {
-				pgon.push_back(c1->source()->source()->point());
-				//pgon.push_back(c1->source()->center_vertex());
+				//pgon.push_back(c1->source()->source()->point());
+				pgon.push_back(c1->source()->center_vertex()->point());
 			}
 			pgons.push_back( pgon );
 		}
 		// first polygon = outer contour. next polygons = hole contours.
 		std::vector<CGAL_Polygon_3> pgons_from_tesser;
 		PRINTDB("pgon contours input: %i", pgons.size());
+		facetess::tessellater_status status;
 		if (pgons.size()>1)
-			facetess::tessellate( pgons, pgons_from_tesser, faces_tess );
+			status = facetess::tessellate( pgons, pgons_from_tesser, faces_tess );
 		else
-			facetess::tessellate( pgons, pgons_from_tesser, faces_w_holes_tess );
-
+			status = facetess::tessellate( pgons, pgons_from_tesser, faces_w_holes_tess );
+		if (status!=facetess::TESSELLATER_OK) PRINTD("ERROR: tess status not OK");
 		PRINTDB("pgon contours output: %i", pgons_from_tesser.size());
 		for (size_t i=0;i<pgons_from_tesser.size();i++) {
 			CGAL_Polygon_3 pgon = pgons_from_tesser[i];
@@ -304,13 +305,15 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 
 	CGAL_Polybuilder B(hds, true);
 	PRINTD("Tess Polyhedron Builder");
+	PRINTDB(" PB err status: %i ", B.error() );
 	B.begin_surface(vertlist.size(), newpgons.size() );
+	PRINTDB(" PB err status: %i ", B.error() );
 	PRINTD(" Index build");
 	for (size_t i=0;i<vertlist.size();i++) {
 		B.add_vertex( vertlist[i] );
-		PRINTDB("%i:%s",i%vertlist[i]);
+		PRINTDB("Vertex Index: %i data: %s",i%vertlist[i]);
 	}
-
+	PRINTDB(" PB err status: %i ", B.error() );
 	for (size_t i=0;i<newpgons.size();i++) {
 		B.begin_facet();
 		PRINTDB(" Adding facet %i",i);
@@ -320,16 +323,29 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 			if (vertmap1.count(point)) {
 				int vert_index = vertmap1[ point ] ;
 				B.add_vertex_to_facet( vert_index );
-				PRINTDB("  Face pt %s, index %i ",point%vert_index);
+				PRINTDB(" adding pt to facet %i pt: %s (pt index %i) ",i%point%vert_index);
 			} else {
 				PRINTB("ERROR: Building polyhedron, vertmap miss: %s",point);
 			}
 		}
 		B.end_facet();
+		// f 362 p 270, 272, 218
+		// f 832 p 270, 272, 220
+		bool errstat = B.error();
+		PRINTDB(" PB err status: %i ", errstat );
+		if (errstat) {
+			PRINTB("ERROR: TessBuilder error while adding facet %i. Points:",i);
+			for (size_t j=0;j<pgon.size();j++) {
+				PRINTB("ERROR: pt index: %i data: %s", vertmap1[pgon[j]]%pgon[j] );
+			}
+		}
 	}
 	B.end_surface();
+	PRINTDB(" PB err status: %i ", B.error() );
 	PRINTD("Tess Polyhedron Builder finished");
+	PRINTDB(" PB err status: %i ", B.error() );
 	hds.normalize_border();
+	PRINTDB(" PB err status: %i ", B.error() );
 	PRINTD("TessBuilder operator() finished");
 }
 

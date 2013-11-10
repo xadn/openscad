@@ -596,7 +596,8 @@ int main(int argc, char **argv)
 		("camera", po::value<string>(), "parameters for camera when exporting png")
 		("imgsize", po::value<string>(), "=width,height for exporting png")
 		("projection", po::value<string>(), "(o)rtho or (p)erspective when exporting png")
-		("facetess", po::value<string>(), "3d surface tessellation=none|cgal|cdt|sskeleton")
+		("facetess", po::value<string>(), "3d face tessellation=none|earclip|cdt|sskeleton")
+		("debug", po::value<string>(), "special debug info")
 		("o,o", po::value<string>(), "out-file")
 		("s,s", po::value<string>(), "stl-file")
 		("x,x", po::value<string>(), "dxf-file")
@@ -623,11 +624,16 @@ int main(int argc, char **argv)
 		help(argv[0]);
 	}
 
+	OpenSCAD::debug = false;
+	if (vm.count("debug")) {
+		OpenSCAD::debug = true;
+	}
+
 	OpenSCAD::facetess::tesstype facetess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
 	if (vm.count("facetess")) {
 		std::string tmp = vm["facetess"].as<string>();
 		if (tmp=="none") facetess = OpenSCAD::facetess::NONE;
-		else if (tmp=="default") facetess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
+		else if (tmp=="earclip") facetess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
 		else if (tmp=="cdt") facetess = OpenSCAD::facetess::CONSTRAINED_DELAUNAY_TRIANGULATION;
 		else if (tmp=="sskeleton") facetess = OpenSCAD::facetess::STRAIGHT_SKELETON;
 		else {
