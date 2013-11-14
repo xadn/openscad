@@ -633,9 +633,10 @@ int main(int argc, char **argv)
 	if (vm.count("facetess")) {
 		std::string tmp = vm["facetess"].as<string>();
 		if (tmp=="none") facetess = OpenSCAD::facetess::NONE;
-		else if (tmp=="earclip") facetess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
+		else if (tmp=="cgal") facetess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
 		else if (tmp=="cdt") facetess = OpenSCAD::facetess::CONSTRAINED_DELAUNAY_TRIANGULATION;
 		else if (tmp=="sskeleton") facetess = OpenSCAD::facetess::STRAIGHT_SKELETON;
+		else if (tmp=="earclip") facetess = OpenSCAD::facetess::EARCLIP;
 		else {
 			PRINT("unknown face tessellation type requested. please try --help");
 			exit(1);

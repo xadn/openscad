@@ -262,6 +262,7 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 	CGAL_Nef_polyhedron3::Halffacet_const_iterator hfaceti;
 	CGAL_forall_halffacets( hfaceti, nef ) {
 		if (hfaceti->incident_volume()->mark() == 0) continue;
+		PRINTD("");
 		PRINTD("iterating through next facet...");
 		CGAL_Nef_polyhedron3::Halffacet_cycle_const_iterator cyclei;
 		std::vector<CGAL_Polygon_3> pgons;
@@ -277,7 +278,10 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 		}
 		// first polygon = outer contour. next polygons = hole contours.
 		std::vector<CGAL_Polygon_3> pgons_from_tesser;
-		PRINTDB("pgon contours input: %i", pgons.size());
+		PRINTDB("pgon input. contours: %i", pgons.size());
+		for (size_t pi=0;pi<pgons.size();pi++) {
+			PRINTDB("pgon %i, # pts: %i",pi%pgons[pi].size());
+		}
 		facetess::tessellater_status status;
 		if (pgons.size()>1)
 			status = facetess::tessellate( pgons, pgons_from_tesser, faces_tess );
@@ -314,6 +318,7 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 		PRINTDB("Vertex Index: %i data: %s",i%vertlist[i]);
 	}
 	PRINTDB(" PB err status: %i ", B.error() );
+	bool error_tripped = false;
 	for (size_t i=0;i<newpgons.size();i++) {
 		B.begin_facet();
 		PRINTDB(" Adding facet %i",i);
@@ -333,7 +338,8 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 		// f 832 p 270, 272, 220
 		bool errstat = B.error();
 		PRINTDB(" PB err status: %i ", errstat );
-		if (errstat) {
+		if (errstat && !error_tripped) {
+			error_tripped = true;
 			PRINTB("ERROR: TessBuilder error while adding facet %i. Points:",i);
 			for (size_t j=0;j<pgon.size();j++) {
 				PRINTB("ERROR: pt index: %i data: %s", vertmap1[pgon[j]]%pgon[j] );
@@ -342,11 +348,10 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 	}
 	B.end_surface();
 	PRINTDB(" PB err status: %i ", B.error() );
-	PRINTD("Tess Polyhedron Builder finished");
-	PRINTDB(" PB err status: %i ", B.error() );
+	PRINTD("Tess Polyhedron Builder finished. Normalizing border.");
 	hds.normalize_border();
-	PRINTDB(" PB err status: %i ", B.error() );
 	PRINTD("TessBuilder operator() finished");
+	PRINTDB(" PB err status: %i ", B.error() );
 }
 
 /* Convert Nef Polyhedron3 to Polyhedron3 with custom face tessellation.

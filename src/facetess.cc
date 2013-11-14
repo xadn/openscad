@@ -6,11 +6,11 @@ Terminology:
 
 Vertex --> a point in space, 2d space or 3d space
 Polygon --> a sequence of vertexes
-Face --> A polygon, plus optional 'hole' polygons
+Face --> A list of polygons, the first is a body, the others are holes
 
 Process:
 
- 1. Project face down into 2d
+ 1. Project input 3d face down into 2d
  2. Convert kernel being used, if needed
  3. Tessellate 2d face into polygons without holes
  4. Convert kernel back to original
@@ -85,11 +85,15 @@ typedef CGAL::Exact_predicates_inexact_constructions_kernel CDTKernel;
 #include <CGAL/Cartesian.h>
 typedef CGAL::Cartesian<CGAL::Gmpq> TessKernel;
 
+typedef TessKernel::FT TessKernel_Number;
 typedef TessKernel::Line_2 TessKernel_Line_2;
 typedef TessKernel::Point_2 TessKernel_Point_2;
 typedef TessKernel::Segment_2 TessKernel_Segment_2;
 typedef CGAL::Polygon_2<TessKernel> TessKernel_Polygon_2;
 typedef std::vector<TessKernel_Polygon_2> TessKernel_Face_2;
+typedef CGAL::Iso_rectangle_2<TessKernel> TessKernel_Iso_rectangle_2;
+typedef CGAL::Direction_2<TessKernel> TessKernel_Direction_2;
+typedef CGAL::Ray_2<TessKernel> TessKernel_Ray_2;
 
 typedef TessKernel::Point_3 TessKernel_Point_3;
 typedef TessKernel::Vector_3 TessKernel_Vector_3;
@@ -97,9 +101,11 @@ typedef std::vector<TessKernel_Point_3> TessKernel_Polygon_3;
 typedef std::vector<TessKernel_Polygon_3> TessKernel_Face_3;
 typedef CGAL::Plane_3<TessKernel> TessKernel_Plane_3;
 typedef CGAL::Line_3<TessKernel> TessKernel_Line_3;
-typedef CGAL::Direction_3<TessKernel> Direction_3;
+typedef CGAL::Direction_3<TessKernel> TessKernel_Direction_3;
 
+typedef CDTKernel::FT CDTKernel_Number;
 typedef CDTKernel::Point_2 CDTKernel_Point_2;
+typedef CDTKernel::Vector_2 CDTKernel_Vector_2;
 typedef CDTKernel::Segment_2 CDTKernel_Segment_2;
 typedef CGAL::Polygon_2<CDTKernel> CDTKernel_Polygon_2;
 typedef std::vector<CDTKernel_Polygon_2> CDTKernel_Face_2;
@@ -114,6 +120,17 @@ typedef CGAL::Delaunay_mesh_criteria_2<CDTriangulation> MeshCriteria;
 typedef CGAL::Delaunay_mesh_size_criteria_2<CDTriangulation> sMeshCriteria;
 typedef CGAL::Delaunay_mesh_local_size_criteria_2<CDTriangulation> lsMeshCriteria;
 typedef CGAL::Delaunay_mesh_area_criteria_2<CDTriangulation> aMeshCriteria;
+
+bool OpenSCAD::facetess::is_triangulation( tesstype_e t ){
+        switch (t) {
+                case NONE: return true;
+                case CGAL_NEF_STANDARD: return true;
+                case CONSTRAINED_DELAUNAY_TRIANGULATION: return true;
+                case STRAIGHT_SKELETON: return false;
+                case EARCLIP: return true;
+        }
+        return false;
+}
 
 template <class T> class DummyMeshCriteria {
 public:
@@ -131,11 +148,46 @@ public:
         Is_bad is_bad_object() const { return Is_bad(); }
 };
 
-CDTKernel::FT sqr( const CDTKernel::FT & x) { return x * x; }
-CDTKernel::FT blueq( const CDTKernel_Point_2 &a, const CDTKernel_Point_2 &b )
-{
+CDTKernel_Number sqr( const CDTKernel_Number & x) { return x * x; }
+TessKernel_Number sqr( const TessKernel_Number & x) { return x * x; }
+CDTKernel_Number blueq( const CDTKernel_Point_2 &a, const CDTKernel_Point_2 &b ) {
 	return sqr(a.x()-b.x()) + sqr(a.y()-b.y());
 }
+TessKernel_Number blueq( const TessKernel_Point_2 &a, const TessKernel_Point_2 &b ) {
+	return sqr(a.x()-b.x()) + sqr(a.y()-b.y());
+}
+CDTKernel_Number blueq( const CDTKernel_Vector_2 &v ) {
+	return sqr(v.x())+sqr(v.y());
+}
+CDTKernel_Number spread( const CDTKernel_Vector_2 &a, const CDTKernel_Vector_2 &b ) {
+	CDTKernel_Number dotproduct = a.x()*b.x()+a.y()*b.y();
+	return sqr(dotproduct) / ( blueq(a) * blueq( b ) );
+}
+
+/* 
+from cgal docs
+
+The termination of the algorithm is guaranteed when criteria are 
+shape criteria corresponding to a bound on smallest angles not less than 
+\( 20.7\) degrees (this corresponds to a radius-edge ratio bound not 
+less than \( \sqrt{2}\)). Any size criteria that are satisfied by small 
+enough triangle can be added to the set of criteria without compromising 
+the termination.
+
+------> note. 20.7 degrees.. a spread of 1/10 will be OK there.
+
+Note that, in the presence of input angles smaller than \( 60\) degrees, 
+some bad shaped triangles can appear in the final mesh in the 
+neighboring of small angles. To achieve termination and the respect of 
+size criteria everywhere, the Is_bad predicate has to return 
+CGAL::Mesh_2::IMPERATIVELY_BAD when size criteria are not satisfied, and 
+CGAL::Mesh_2::BAD when shape criteria are not satisfied.
+
+MeshingCriteria_2 also provides a type Quality designed to code a 
+quality measure for triangles. The type Quality must be less-than 
+comparable as the meshing algorithm will order bad triangles by quality, 
+to split those with smallest quality first. The predicate Is_bad 
+computes the quality of the triangle as a by-product. */
 
 template <class T> class TestMeshCriteria {
 public:
@@ -143,34 +195,41 @@ public:
         class Is_bad {
         public:
                 CGAL::Mesh_2::Face_badness operator()(const Quality q) const {
-			PRINTDB("operator() q: %i", q);
-                        return CGAL::Mesh_2::NOT_BAD;
+			PRINTDB("operator() q: %d", q);
+			double epsilon = 0.1;
+			if (q>epsilon) return CGAL::Mesh_2::IMPERATIVELY_BAD;
+			if (q>0.04) return CGAL::Mesh_2::BAD;
+			return CGAL::Mesh_2::BAD;
                 }
                 CGAL::Mesh_2::Face_badness operator()(const typename T ::Face_handle& fh, Quality&q) const {
-                        q = 1;
+			double epsilon = 0.1;
 			const CDTriangulation::Point &a = fh->vertex(0)->point();
 			const CDTriangulation::Point &b = fh->vertex(1)->point();
 			const CDTriangulation::Point &c = fh->vertex(2)->point();
-			PRINTDB("operator() pt: %s %s %s, q: %i", a%b%c%q);
-			std::stringstream s;
-			s << a; std::string as = s.str(); s.str("");
-			s << b; std::string bs = s.str(); s.str("");
-			s << c; std::string cs = s.str(); s.str("");
-			PRINTDB("point test. %s %s %s",as%bs%cs);
-			if (as==bs || bs==cs || as==cs) {
-				PRINTDB("points too close. %s %s %s",as%bs%cs);
-				return CGAL::Mesh_2::NOT_BAD;
-			}
-			CDTKernel::FT Qa = blueq(b,c);
-			CDTKernel::FT Qb = blueq(a,c);
-			CDTKernel::FT Qc = blueq(a,b);
-			CDTKernel::FT epsilon(1e-14);
-			CDTKernel::FT Qmin = std::min(Qa,std::min(Qb,Qc));
-			CDTKernel::FT Qmax = std::max(Qa,std::max(Qb,Qc));
-			PRINTDB("operator() q: %s %s %s, q: %i", Qa%Qb%Qc%q);
-			if ((Qa-Qb<epsilon) || (Qa-Qc<epsilon) || (Qb-Qc<epsilon))
-				return CGAL::Mesh_2::NOT_BAD;
-			if (Qmin<(Qmax*0.95)) return CGAL::Mesh_2::BAD;
+			PRINTDB("operator() criteria %s %s %s",a%b%c);
+			CDTKernel_Vector_2 Va( b, c );
+			CDTKernel_Vector_2 Vb( c, a );
+			CDTKernel_Vector_2 Vc( a, b );
+			CDTKernel_Number Qa = blueq( Va );
+			CDTKernel_Number Qb = blueq( Vb );
+			CDTKernel_Number Qc = blueq( Vc );
+			q = Qa*Qb*Qc;
+			if (Qa*Qb*Qc>epsilon) return CGAL::Mesh_2::IMPERATIVELY_BAD;
+			CDTKernel_Number s1 = spread( Va, Vb );
+			CDTKernel_Number s2 = spread( Vb, Vc );
+			CDTKernel_Number s3 = spread( Vc, Va );
+			CDTKernel_Number minspread = std::min(s1,std::min(s2,s3));
+			//CDTKernel_Number arch = archimedes( Qa, Qb, Qc );
+			if (minspread<10) return CGAL::Mesh_2::BAD;
+//			if ((Qa+Qb+Qc)<0.005) return CGAL::Mesh_2::IMPERATIVELY_BAD;
+			//if (arch<0.005) return CGAL::Mesh_2::IMPERATIVELY_BAD;
+/*			find min spread
+			if minspread < 10 return BAD
+			find size using trip quad
+			if size < x return IMPERATIVELY BAD
+			q = minspread
+*/
+//			notbadq = q;
 			return CGAL::Mesh_2::NOT_BAD;
                 }
         };
@@ -200,7 +259,6 @@ bool inside( SomePolygon_2 &tocheck, SomePolygon_2 &outside )
 tessellater_status triangulate_cdt( CDTKernel_Face_2 &input, std::vector<CDTKernel_Polygon_2> &output)
 {
 	PRINTD( "triangulation" );
-	return CGAL_ERROR; // testing
 	// assumes polygons are simple and holes are inside body.
 	tessellater_status status = TESSELLATER_OK;
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
@@ -250,12 +308,12 @@ tessellater_status triangulate_cdt( CDTKernel_Face_2 &input, std::vector<CDTKern
 	PRINTD( "Meshing..." );
 //	CGAL::refine_Delaunay_mesh_2_without_edge_refinement(
 	CGAL::refine_Delaunay_mesh_2(
-//	  cdt, list_of_seeds.begin(), list_of_seeds.end(), MeshCriteria()); // freezes
+//	  cdt, list_of_seeds.begin(), list_of_seeds.end(), MeshCriteria(0.125,0.5)); // freezes
 //	  cdt, list_of_seeds.begin(), list_of_seeds.end(), DummyMeshCriteria<CDTriangulation>()); // freezes
-//	  cdt, list_of_seeds.begin(), list_of_seeds.end(), sMeshCriteria()); // freezes
+	  cdt, list_of_seeds.begin(), list_of_seeds.end(), sMeshCriteria(0.125,0.5)); // freezes
 //	  cdt, list_of_seeds.begin(), list_of_seeds.end(), lsMeshCriteria());
 //	  cdt, list_of_seeds.begin(), list_of_seeds.end(), aMeshCriteria()); // freezes
-	  cdt, list_of_seeds.begin(), list_of_seeds.end(), TestMeshCriteria<CDTriangulation>());
+//	  cdt, list_of_seeds.begin(), list_of_seeds.end(), TestMeshCriteria<CDTriangulation>());
 
 	PRINTDB( "Meshed. Number of vertices: %i", cdt.number_of_vertices());
 	PRINTDB( "Number of finite faces: %i", cdt.number_of_faces());
@@ -280,36 +338,220 @@ tessellater_status triangulate_cdt( CDTKernel_Face_2 &input, std::vector<CDTKern
 	return status;
 }
 
-
-TessKernel_Polygon_2 clip_ear( TessKernel_Polygon_2 &pgon )
+static int fibindex = 0; // fake random earclipping using Fibonacci's sequence
+tessellater_status clip_ear( TessKernel_Polygon_2 &pgon, TessKernel_Polygon_2 &newear )
 {
-	TessKernel_Polygon_2::Vertex_iterator vi = pgon.vertices_begin();
-	TessKernel_Polygon_2 ear;
+	newear.clear();
+	fibindex = (1 + fibindex);
+	bool earok = false;
+	size_t index0, index1, index2 = 0;
+	TessKernel_Number maxarea(-1);
+	size_t maxarea_index = 0;
 	for (size_t i=0;i<pgon.size();i++) {
-		vi++;
-		ear.clear();
-		bool earok = true;
-		TessKernel_Point_2 p1 = pgon[(i+0)];
-		TessKernel_Point_2 p2 = pgon[(i+1)%pgon.size()];
-		TessKernel_Point_2 p3 = pgon[(i+2)%pgon.size()];
-		ear.push_back( p1 );
-		ear.push_back( p2 );
-		ear.push_back( p3 );
-		if (ear.orientation()==CGAL::CLOCKWISE)
-			earok = false;
-		for (size_t j=0;j<pgon.size();j++) {
-			TessKernel_Point_2 testp = pgon[j];
-			if (inside<TessKernel_Point_2,TessKernel_Polygon_2>( testp, ear )) {
-				earok = false;
+		newear.clear();
+		index0 = (i+fibindex+0)%pgon.size();
+		index1 = (i+fibindex+1)%pgon.size();
+		index2 = (i+fibindex+2)%pgon.size();
+		TessKernel_Point_2 p1 = pgon[index0];
+		TessKernel_Point_2 p2 = pgon[index1];
+		TessKernel_Point_2 p3 = pgon[index2];
+		//PRINTDB("earsearch. idxs: %i %i %i",index0%index1%index2);
+		double ex1 = CGAL::to_double(p1.x());
+		double ey1 = CGAL::to_double(p1.y());
+		double ex2 = CGAL::to_double(p2.x());
+		double ey2 = CGAL::to_double(p2.y());
+		double ex3 = CGAL::to_double(p3.x());
+		double ey3 = CGAL::to_double(p3.y());
+		//PRINTB("edata=[[%d,%d],[%d,%d],[%d,%d]]",ex1%ey1%ex2%ey2%ex3%ey3);
+		//PRINTB("edataRat=[%s %s %s]",p1%p2%p3);
+		newear.push_back( p1 );
+		newear.push_back( p2 );
+		newear.push_back( p3 );
+
+		if (newear.is_simple()) {
+			PRINTD("Ear simple");
+			if (newear.orientation()==CGAL::COUNTERCLOCKWISE) {
+				PRINTD("Ear CCW");
+				bool clean=true;
+				for (size_t j=0;j<pgon.size();j++) {
+					TessKernel_Point_2 testp = pgon[j];
+					if (newear.has_on_bounded_side( testp )) {
+						PRINTDB("Ear search fail. pt inside. idx %i, data %s",j%testp);
+						clean = false;
+						break;
+					}
+					if (newear.has_on_boundary( testp )) {
+						if ( testp != p1 && testp != p2 && testp != p3 ) {
+							PRINTDB("Ear search fail, pt on boundary: idx %i data %s",j%testp);
+							clean = false;
+							break;
+						}
+					}
+				}
+				if (clean) earok=true;
+			} else {
+				PRINTD("Earlcip fail. not CCW");
+				PRINTDB("Orientation was: %i",newear.orientation());
 			}
+		} else {
+			PRINTD("Earclip fail. Ear not simple");
 		}
-		if (earok) break;
+		if (earok) {
+			if (newear.area()>maxarea) {
+				maxarea_index = index1;
+			}
+			break;
+		}
 	}
-	pgon.erase( vi );
-	return ear;
+	if (!earok) {
+		PRINTD("- pgon had no ear - thats not true! -thats impossible! -");
+		for (size_t i=0;i<pgon.size();i++) {
+			PRINTDB("noear.pgon.pt %i %s",i%pgon[i]);
+		}
+		return POLYGON_WITHOUT_EAR;
+	} else {
+		PRINTDB("chopping ear pt idx %i: %s",index1%pgon[index1]);
+		TessKernel_Polygon_2::Vertex_iterator vi = pgon.vertices_begin();
+		for (size_t j=0;j<maxarea_index;j++) vi++;
+		pgon.erase( vi );
+	}
+/*	std::stringstream s; s<<"pdata=[";
+	for (size_t j=0;j<pgon.size();j++) {
+		double x = CGAL::to_double(pgon[j].x());
+		double y = CGAL::to_double(pgon[j].y());
+		s << " [ " << x << "," << y << "],";
+	} s<<"]";*/
+	//PRINTB("%s",s.str());
+	return TESSELLATER_OK;
 }
 
-tessellater_status triangulate_earclip( TessKernel_Face_2 &input, std::vector<TessKernel_Polygon_2> &output)
+std::pair<size_t,size_t> find_top_hole_pt( TessKernel_Face_2 &input )
+{
+	std::pair<size_t,size_t> result(1,0); // indexes: hole, point within hole
+	if (input.size()<=1) return result;
+	TessKernel_Number highesty = input[result.first][result.second].y();
+	for (size_t i=1;i<input.size();i++){
+		for (size_t j=0;j<input[i].size();j++){
+			const TessKernel_Point_2 p = input[i][j];
+			if (p.y()>highesty) {
+				highesty = p.y();
+				result.first = i;
+				result.second = j;
+			}
+		}
+	}
+	return result;
+}
+
+// assumes body and holes are all simple and non-intersecting
+tessellater_status remove_top_hole( TessKernel_Face_2 &input )
+{
+	if (input.size()<=1) return TESSELLATER_OK;
+	std::pair<size_t,size_t> toremove = find_top_hole_pt( input );
+	size_t holeidx = toremove.first;
+	size_t holept_index = toremove.second;
+	TessKernel_Polygon_2 hole_to_rm = input[ holeidx ];
+	TessKernel_Point_2 toremove_pt = hole_to_rm[ holept_index ];
+	TessKernel_Ray_2 l = TessKernel_Ray_2( toremove_pt, TessKernel_Direction_2(0,1) );
+	TessKernel_Polygon_2 body = input[0];
+	const TessKernel_Point_2 *ptest;
+	TessKernel_Polygon_2 newbody;
+	PRINTDB("Remove top hole. pgon idx: %i pt idx: %i ",holeidx%holept_index );
+	for (size_t i=0;i<input.size();i++)
+		for (size_t j=0;j<input[i].size();j++)
+			PRINTDB(" pgon %i pt %i data %s",i%j%input[i][j]);
+/*	if (hole_to_rm.orientation()==CGAL::CLOCKWISE) {
+		hole_to_rm.reverse_orientation();
+		holept_index = hole_to_rm.size() - holept_index;
+	}*/
+	/// find new pt
+	TessKernel_Point_2 newpt;
+	size_t cutindex = -1;
+	TessKernel_Number lowq(-1);
+	for (size_t i=0;i<body.size();i++) {
+		TessKernel_Segment_2 s( body[i],body[(i+1)%body.size()] );
+		CGAL::Object obj = CGAL::intersection( l, s );
+		ptest = CGAL::object_cast<TessKernel_Point_2>(&obj);
+		if (ptest) {
+			PRINTDB("ray from holept %s, intersects pgon @ %s",toremove_pt%*ptest);
+			TessKernel_Number bq = blueq(toremove_pt,*ptest);
+			if (bq < lowq || lowq == -1) {
+				newpt = *ptest;
+				lowq = bq;
+				cutindex = i;
+			}
+		}
+	}
+
+
+	for (size_t i=0;i<body.size();i++) {
+		newbody.push_back( body[i] );
+		if (i==cutindex) {
+			newbody.push_back( newpt );
+			for (size_t j=0;j<hole_to_rm.size();j++) {
+				size_t index = ( j+holept_index ) % hole_to_rm.size();
+				newbody.push_back( hole_to_rm[index] );
+			}
+			newbody.push_back( hole_to_rm[ holept_index ] );
+			newbody.push_back( newpt );
+		}
+	}
+
+	std::vector<TessKernel_Polygon_2>::iterator vi=input.begin();
+	for (size_t i=0;i<holeidx;i++) vi++;
+	input.erase( vi );
+	input[0] = newbody;
+	PRINTD("Removed hole");
+	PRINTDB("New Face body. simple: %i #pts: %i",input[0].is_simple()%input[0].size());
+		std::stringstream s; s<<"posthole=[";
+		for (size_t j=0;j<input[0].size();j++) {
+			double x = CGAL::to_double(input[0][j].x());
+			double y = CGAL::to_double(input[0][j].y());
+			s << " [ " << x << "," << y << "],";
+		} s<<"]";
+		PRINTB("%s",s.str());
+	for (size_t i=0;i<input[0].size();i++) {
+		PRINTDB(" pt %i: %s",i%input[0][i]);
+	}
+	PRINTDB("New Face # contours: %i",input.size());
+	return TESSELLATER_OK;
+}
+
+tessellater_status remove_holes( TessKernel_Face_2 &input )
+{
+	if (input.size()==0) return TESSELLATER_OK;
+	if (input.size()==1) return TESSELLATER_OK;
+	size_t numholes = input.size()-1;
+	PRINTDB("Num holes: %i",numholes );
+	for (size_t h=0;h<numholes;h++) {
+		remove_top_hole( input );
+		PRINTDB("Num contours: %i",input.size() );
+	}
+	PRINTDB("Holes removed. #pts in new pgon: %i",input[0].size());
+	return TESSELLATER_OK;
+}
+
+tessellater_status remove_adjacent_samepoint( TessKernel_Polygon_2 &pgon )
+{
+	TessKernel_Polygon_2::Vertex_iterator vi = pgon.vertices_begin();
+	size_t index0, index1 = 0;
+	for (size_t i=0;i<pgon.size();i++) {
+		index0 = (i+0)%pgon.size();
+		index1 = (i+1)%pgon.size();
+		TessKernel_Point_2 p1 = pgon[index0];
+		TessKernel_Point_2 p2 = pgon[index1];
+		if (p1==p2) {
+			pgon.erase(vi);
+			break;
+		}
+		vi++;
+	}
+	return TESSELLATER_OK;
+}
+
+tessellater_status triangulate_earclip(
+	TessKernel_Face_2 &input,
+	std::vector<TessKernel_Polygon_2> &output)
 {
 	tessellater_status status = TESSELLATER_OK;
 	if (input.size()==1 && input[0].size()==3) {
@@ -317,18 +559,37 @@ tessellater_status triangulate_earclip( TessKernel_Face_2 &input, std::vector<Te
 		PRINTD("Already a triangle. Not triangulating");
 		return status;
 	}
-	PRINTDB( "triangulate_earclip. input pts: %i", input[0].size());
+	PRINTDB( "triangulate_earclip. input pts: %i. simple: %i", input[0].size()%input[0].is_simple());
+	if (input[0].is_simple()) PRINTDB( "triangulate_earclip. orient:%i", input[0].orientation());
 	if (input.size()>1) {
-		PRINTD("Earclip cannot deal with holes");
-		return CANNOT_EARCLIP_HOLE;
+		remove_holes( input );
+		PRINTDB( "triangulate_earclip after hole removal. input pts: %i. simple: %i", input[0].size()%input[0].is_simple());
+		if (input[0].is_simple()) PRINTDB( "triangulate_earclip after hole removal. orient:%i", input[0].orientation());
+	}
+	size_t size_before=-1;
+	while(size_before!=input[0].size()) {
+		PRINTDB("Remove adjacent samepoints %i",input[0].size());
+		size_before = input[0].size();
+		remove_adjacent_samepoint( input[0] );
 	}
 	TessKernel_Polygon_2 pgon = input[0];
-	while (pgon.size()>3) {
-		TessKernel_Polygon_2 ear = clip_ear( pgon );
-		PRINTDB( " clip ear pt: %s, pts left: %i", ear[1]%pgon.size());
+	for (size_t i=0;i<pgon.size();i++) PRINTDB("  pt %i %s ",i%pgon[i]);
+	while (pgon.size()>2) {
+		TessKernel_Polygon_2 ear;
+		status = clip_ear( pgon, ear );
+		if (status!=TESSELLATER_OK) return status;
+		PRINTDB( " new ear: pts: %i simple: %i",ear.size()%ear.is_simple());
+		if (ear.is_simple()) PRINTDB( " new ear orient: %i",ear.orientation());
+		PRINTDB( " new pgon: pts: %i simple: %i",pgon.size()%pgon.is_simple());
+		if (pgon.is_simple()) PRINTDB( " new pgon orient: %i",pgon.orientation());
+		else {
+			PRINTD("yikes. new pgon not simple");
+		}
+		//for (size_t i=0;i<pgon.size();i++) PRINTDB("  pt %i %s ",i%pgon[i]);
 		output.push_back( ear );
 	}
-	output.push_back( pgon );
+	//PRINTD("ears all clipped. last pgon: %s",pgon);
+	//output.push_back( pgon );
 	PRINTDB( "ears in output: %i",output.size());
 	return status;
 }
@@ -488,10 +749,10 @@ tessellater_status project_3d_to_2d(
 	normal = CGAL::normal(p,q,r);
 	polygon_plane3d = TessKernel_Plane_3( p, q, r );
 
-	TessKernel::FT xyshadow = normal.x()*normal.x()+normal.y()*normal.y();
-	TessKernel::FT yzshadow = normal.y()*normal.y()+normal.z()*normal.z();
-	TessKernel::FT xzshadow = normal.x()*normal.x()+normal.z()*normal.z();
-	TessKernel::FT minshadow = std::min( xyshadow, std::min( yzshadow, xzshadow ) );
+	TessKernel_Number xyshadow = normal.x()*normal.x()+normal.y()*normal.y();
+	TessKernel_Number yzshadow = normal.y()*normal.y()+normal.z()*normal.z();
+	TessKernel_Number xzshadow = normal.x()*normal.x()+normal.z()*normal.z();
+	TessKernel_Number minshadow = std::min( xyshadow, std::min( yzshadow, xzshadow ) );
 	if (minshadow==xyshadow) projection = XY_PROJECTION;
 	else if (minshadow==yzshadow) projection = YZ_PROJECTION;
 	else projection = XZ_PROJECTION;
@@ -504,16 +765,16 @@ tessellater_status project_3d_to_2d(
 		for (size_t j=0;j<tmppoly3d.size();++j) {
 			TessKernel_Point_3 tmp3d = tmppoly3d[j];
 			TessKernel_Point_2 tmp2d;
-			TessKernel::FT x = tmp3d.x();
-			TessKernel::FT y = tmp3d.y();
-			TessKernel::FT z = tmp3d.z();
+			TessKernel_Number x = tmp3d.x();
+			TessKernel_Number y = tmp3d.y();
+			TessKernel_Number z = tmp3d.z();
 			if ( projection == XY_PROJECTION )
 				tmp2d = TessKernel_Point_2( x, y);
 			else if ( projection == XZ_PROJECTION )
 				tmp2d = TessKernel_Point_2( x, z );
 			else if ( projection == YZ_PROJECTION )
 				tmp2d = TessKernel_Point_2( y, z );
-			PRINTDB( "%s --> %s", tmp3d % tmp2d );
+			PRINTDB( "pgon %i pt %i: %s --> %s", i%j%tmp3d % tmp2d );
 			vertmap[ tmp2d ] = tmp3d;
 			tmppoly2d.push_back( tmp2d );
 		}
@@ -525,12 +786,18 @@ tessellater_status project_3d_to_2d(
 template <typename SomePoint_2,typename SomePolygon_2>
 tessellater_status quality_check( std::vector<SomePolygon_2> &pgons )
 {
-	PRINTD( "checking for simplicity, self-intersection, etc");
-	PRINTDB( "is convex: %i", pgons[0].is_convex() );
-	PRINTDB( "is simple: %i", pgons[0].is_simple() );
+	PRINTD( "quality check");
 	if (!pgons[0].is_simple()) return BODY_NOT_SIMPLE;
 	//if (!simple_check(pgons[0])) return BODY_NOT_SIMPLE;
+	PRINTDB( "body pgon. points: %i", pgons[0].size() );
+	PRINTDB( "body is convex: %i", pgons[0].is_convex() );
+	PRINTDB( "body is simple: %i", pgons[0].is_simple() );
+	int numholes = pgons.size()-1;
+	PRINTDB( "holes: %i", numholes );
 	for (size_t i=1;i<pgons.size();i++) {
+		PRINTDB( "hole pgon: %i points: %i", i%pgons[i].size() );
+		PRINTDB( "hole is convex: %i", pgons[i].is_convex() );
+		PRINTDB( "hole is simple: %i", pgons[i].is_simple() );
 		if (pgons[i].size()<3) return HOLE_LACKS_POINTS;
 		if (!pgons[i].is_simple()) return HOLE_NOT_SIMPLE;
 		if (!inside<SomePoint_2,SomePolygon_2>(pgons[i], pgons[0])) return HOLE_OUTSIDE_BODY;
@@ -592,6 +859,58 @@ void convert_kernel( std::vector<CDTKernel_Polygon_2> &input,
 	}
 }
 
+tessellater_status cdt_tess( TessKernel_Face_2 &tk_input2dface,
+	std::vector<TessKernel_Polygon_2> &tk_output_pgons2d,
+	CGAL::Orientation &original_body_orientation )
+{
+	std::map<CDTKernel_Point_2,TessKernel_Point_2> vertmap_k;
+	CDTKernel_Face_2 cdtface;
+	std::vector<CDTKernel_Polygon_2> cdtpgons;
+	convert_kernel( tk_input2dface, cdtface, vertmap_k );
+	tessellater_status status = quality_check<CDTKernel_Point_2,CDTKernel_Polygon_2>( cdtface );
+	if (status!=TESSELLATER_OK) {
+		PRINTD("Tessellater - CDT Quality check failed");
+		return status;
+	}
+	fix_orientation<CDTKernel_Polygon_2>( cdtface, original_body_orientation );
+	status = triangulate_cdt( cdtface, cdtpgons );
+	if (status==TESSELLATER_OK) {
+		// fix orentation for output.
+		// must do orientation fix w same kernel of output
+		for (size_t i=0;i<cdtpgons.size();i++) {
+			if (cdtpgons[i].orientation() == original_body_orientation)
+				cdtpgons[i].reverse_orientation();
+		}
+		convert_kernel( cdtpgons, tk_output_pgons2d, vertmap_k );
+	}
+	return status;
+}
+
+tessellater_status earclip_tess( TessKernel_Face_2 &tk_input2dface,
+	std::vector<TessKernel_Polygon_2> &tk_output_pgons2d,
+	CGAL::Orientation &original_body_orientation )
+{
+	tessellater_status status = quality_check<TessKernel_Point_2,TessKernel_Polygon_2>( tk_input2dface );
+	if (status!=TESSELLATER_OK) {
+		PRINTD("Tessellater - TK Quality check failed");
+		return status;
+	}
+	fix_orientation<TessKernel_Polygon_2>( tk_input2dface, original_body_orientation );
+	triangulate_earclip( tk_input2dface, tk_output_pgons2d );
+	PRINTD( "restore orientation so the 3d normals will be OK");
+	// must do orientation w same kernel of output
+	for (size_t i=0;i<tk_output_pgons2d.size();i++) {
+		if (!tk_output_pgons2d[i].is_simple()) {
+			PRINTDB("Error: Non simple ear!: %s",tk_output_pgons2d[i]);
+			status=NONSIMPLE_EAR;
+			break;
+		}
+		if (tk_output_pgons2d[i].orientation() == original_body_orientation)
+			tk_output_pgons2d[i].reverse_orientation();
+	}
+	return status;
+}
+
 tessellater_status do_tessellation(
 	TessKernel_Face_3 &input3dface,
 	std::vector<TessKernel_Polygon_3> &output_pgons3d,
@@ -604,49 +923,19 @@ tessellater_status do_tessellation(
 	projection_type projection;
 	project_3d_to_2d( input3dface, tk_input2dface, vertmap, polygon_plane3d, projection );
 
-	PRINTDB("holes: %i", (tk_input2dface.size()-1) );
-	CGAL::Orientation original_body_orientation;
+	CGAL::Orientation original_body_orientation = CGAL::CLOCKWISE;
 
 	PRINTD( "tessellate into simple polygons-without-holes");
 	std::vector<TessKernel_Polygon_2> tk_output_pgons2d;
 	if (tess==CONSTRAINED_DELAUNAY_TRIANGULATION) {
-		std::map<CDTKernel_Point_2,TessKernel_Point_2> vertmap_k;
-		CDTKernel_Face_2 cdtface;
-		std::vector<CDTKernel_Polygon_2> cdtpgons;
-		convert_kernel( tk_input2dface, cdtface, vertmap_k );
-		status = quality_check<CDTKernel_Point_2,CDTKernel_Polygon_2>( cdtface );
-		if (status!=TESSELLATER_OK) {
-			PRINTD("Tessellater - CDT Quality check failed");
-			return status;
-		}
-		fix_orientation<CDTKernel_Polygon_2>( cdtface, original_body_orientation );
-		status = triangulate_cdt( cdtface, cdtpgons );
-		if (status==TESSELLATER_OK) {
-			// must do orientation w same kernel of output
-			for (size_t i=0;i<cdtpgons.size();i++) {
-				if (cdtpgons[i].orientation() == original_body_orientation)
-					cdtpgons[i].reverse_orientation();
-			}
-			convert_kernel( cdtpgons, tk_output_pgons2d, vertmap_k );
-		} else {
-			PRINTD("CDT failed. Using earclip");
-			status = quality_check<TessKernel_Point_2,TessKernel_Polygon_2>( tk_input2dface );
-			if (status!=TESSELLATER_OK) {
-				PRINTD("Tessellater - TK Quality check failed");
-				return status;
-			}
-			fix_orientation<TessKernel_Polygon_2>( tk_input2dface, original_body_orientation );
-			triangulate_earclip( tk_input2dface, tk_output_pgons2d );
-			PRINTD( "fix orientation so the 3d normals will be OK");
-			// must do orientation w same kernel of output
-			for (size_t i=0;i<tk_output_pgons2d.size();i++) {
-				if (tk_output_pgons2d[i].orientation() == original_body_orientation)
-					tk_output_pgons2d[i].reverse_orientation();
-			}
-
-		}
+		status = cdt_tess( tk_input2dface, tk_output_pgons2d, original_body_orientation );
+	} else if (tess==EARCLIP) {
+		status = earclip_tess( tk_input2dface, tk_output_pgons2d, original_body_orientation );
 	}
-
+	if (status!= TESSELLATER_OK) {
+		PRINTD("Tessellation failed. no output polygons");
+		return status;
+	}
 	PRINTD( "project from 2d back into 3d");
 	for (size_t i=0;i<tk_output_pgons2d.size();i++) {
 		TessKernel_Polygon_2 pgon2d = tk_output_pgons2d[i];
@@ -662,17 +951,17 @@ tessellater_status do_tessellation(
 			} else {
 				PRINTDB("  2dpt %s, not cached..calculating 3d...",pt2d);
 				TessKernel_Line_3 line3d;
-				TessKernel::FT x = pt2d.x();
-				TessKernel::FT y = pt2d.y();
+				TessKernel_Number x = pt2d.x();
+				TessKernel_Number y = pt2d.y();
 				if ( projection == XY_PROJECTION ) {
 					TessKernel_Point_3 tmp3d = TessKernel_Point_3( x,y,0 );
-					line3d = TessKernel_Line_3( tmp3d, Direction_3(0,0,1) );
+					line3d = TessKernel_Line_3( tmp3d, TessKernel_Direction_3(0,0,1) );
 				} else if ( projection == XZ_PROJECTION ) {
 					TessKernel_Point_3 tmp3d = TessKernel_Point_3( x,0,y );
-					line3d = TessKernel_Line_3( tmp3d, Direction_3(0,1,0) );
+					line3d = TessKernel_Line_3( tmp3d, TessKernel_Direction_3(0,1,0) );
 				} else if ( projection == YZ_PROJECTION ) {
 					TessKernel_Point_3 tmp3d = TessKernel_Point_3( 0,x,y );
-					line3d = TessKernel_Line_3( tmp3d, Direction_3(1,0,0) );
+					line3d = TessKernel_Line_3( tmp3d, TessKernel_Direction_3(1,0,0) );
 				}
 				CGAL::Object obj = CGAL::intersection( line3d, polygon_plane3d );
 				const TessKernel_Point_3 *point_test = CGAL::object_cast<TessKernel_Point_3>(&obj);
@@ -738,7 +1027,7 @@ tessellater_status OpenSCAD::facetess::tessellate(
 	for (size_t i=0;i<tess_pgon3d_out.size();i++) {
 		CGAL_Polygon_3 oscad_pgon;
 		TessKernel_Polygon_3 tess_pgon = tess_pgon3d_out[i];
-		PRINTDB( "Polygon %i", i );
+		PRINTDB( "Polygon %i, # pts: %i", i%tess_pgon.size() );
 		for (size_t j=0;j<tess_pgon.size();j++) {
 			TessKernel_Point_3 tess_point = tess_pgon[j];
 			CGAL_Point_3 oscad_point;

@@ -141,9 +141,9 @@ std::vector<stl_triangle> get_cgal_polyhedron_triangles( const CGAL_Polyhedron &
 
 std::vector<stl_triangle> get_cgal_nef_poly_triangles( const CGAL_Nef_polyhedron3 &N, OpenSCAD::facetess::tesstype tess )
 {
-	if (tess!=OpenSCAD::facetess::CGAL_NEF_STANDARD && tess!=OpenSCAD::facetess::CONSTRAINED_DELAUNAY_TRIANGULATION) {
+	if (!is_triangulation(tess)) {
 		PRINT("WARNING: This format needs triangle tessellation. Using CGAL default.");
-		tess = OpenSCAD::facetess::CGAL_NEF_STANDARD; // force use of tessellator that generates triangles
+		tess = OpenSCAD::facetess::CGAL_NEF_STANDARD;
 	}
 	std::vector<stl_triangle> triangles;
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);

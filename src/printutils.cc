@@ -59,8 +59,7 @@ void PRINTDEBUG(const std::string &msg)
 	// and it would only dump DEBUG from that file?
 	// is that possible? even more, what about regex case-insense a str
 	if (OpenSCAD::debug) {
-		fprintf(stderr,("DEBUG: " + msg + "\n").c_str() );
-		//PRINT( "DEBUG: " + msg );
+		PRINT_NOCACHE( "DEBUG: " + msg );
 	}
 }
 

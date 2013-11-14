@@ -1,5 +1,5 @@
-#ifndef TESS3D_H_
-#define TESS3D_H_
+#ifndef FACETESS3D_H_
+#define FACETESS3D_H_
 
 #include "cgal.h"
 
@@ -8,10 +8,13 @@ namespace facetess {
 
 typedef enum tesstype_e {
 	NONE,
-	CGAL_NEF_STANDARD, // built-in to CGAL's NefPolyhedron->Polyhedron converter
+	CGAL_NEF_STANDARD, // built-in to CGAL's NefPolyhedron->Polyhedron converter.
 	CONSTRAINED_DELAUNAY_TRIANGULATION,
-	STRAIGHT_SKELETON
+	STRAIGHT_SKELETON,
+	EARCLIP
 } tesstype;
+
+bool is_triangulation( tesstype_e t );
 
 typedef enum tessellater_status_e {
         TESSELLATER_OK,
@@ -28,6 +31,8 @@ typedef enum tessellater_status_e {
         PROJECTION_2D3D_FAILED,
 	CGAL_ERROR,
 	CANNOT_EARCLIP_HOLE,
+	NONSIMPLE_EAR,
+	POLYGON_WITHOUT_EAR,
 } tessellater_status;
 
 /* Tessellate the input 3d polygon (with holes) into one or more output
