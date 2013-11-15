@@ -201,7 +201,7 @@ Geometry *PolySetCGALEvaluator::evaluateGeometry(const ProjectionNode &node)
 
 	PolySet *ps = nef_poly.convertToPolyset();
 	assert( ps != NULL );
-	ps->convexity = node.convexity;
+	ps->setConvexity(node.convexity);
 	logstream(9) << ps->dump() << "\n";
 
 	return ps;
@@ -363,7 +363,7 @@ Geometry *PolySetCGALEvaluator::extrudePolygon(const LinearExtrudeNode &node,
 																							 const Polygon2d &poly)
 {
 	PolySet *ps = new PolySet();
-	ps->convexity = node.convexity;
+	ps->setConvexity(node.convexity);
 	if (node.height <= 0) return ps;
 
 	double h1, h2;
@@ -423,7 +423,7 @@ Geometry *PolySetCGALEvaluator::extrudePolygon(const LinearExtrudeNode &node,
 Geometry *PolySetCGALEvaluator::extrudeDxfData(const LinearExtrudeNode &node, DxfData &dxf)
 {
 	PolySet *ps = new PolySet();
-	ps->convexity = node.convexity;
+	ps->setConvexity(node.convexity);
 	if (node.height <= 0) return ps;
 
 	double h1, h2;
@@ -526,7 +526,7 @@ Geometry *PolySetCGALEvaluator::evaluateGeometry(const CgaladvNode &node)
 	PolySet *ps = NULL;
 	if (!N.isNull()) {
 		ps = N.convertToPolyset();
-		if (ps) ps->convexity = node.convexity;
+		if (ps) ps->setConvexity(node.convexity);
 	}
 
 	return ps;
@@ -542,7 +542,7 @@ Geometry *PolySetCGALEvaluator::evaluateGeometry(const RenderNode &node)
 		}
 		else {
 			ps = N.convertToPolyset();
-			if (ps) ps->convexity = node.convexity;
+			if (ps) ps->setConvexity(node.convexity);
 		}
 	}
 	return ps;
@@ -551,7 +551,7 @@ Geometry *PolySetCGALEvaluator::evaluateGeometry(const RenderNode &node)
 Geometry *PolySetCGALEvaluator::rotateDxfData(const RotateExtrudeNode &node, DxfData &dxf)
 {
 	PolySet *ps = new PolySet();
-	ps->convexity = node.convexity;
+	ps->setConvexity(node.convexity);
 
 	for (size_t i = 0; i < dxf.paths.size(); i++)
 	{
