@@ -3,9 +3,10 @@
 
 #include "polyset.h"
 #include "cgal.h"
+#include "linalg.h"
 
 /* Auxiliary polyset for dealing with CGAL data structures.
- The vertexes are in a list. A Polygon is a set of indexes into that
+ The vertexes are in a list. A Polygon is a sequence of indexes into that
  list. A 'volume' is a set of indexes into the polygon list.
 
  Example: a pyramid
@@ -16,6 +17,13 @@
  Issues undealt with: invalid shapes, self intersections, normals, etc. Those
  are the responsibility of the caller.
 */
+class VolumeQ : public std::vector<size_t>
+{
+public:
+	Color4f color;
+	VolumeQ( Color4f c ) : color(c) { }
+	VolumeQ() { this->color=Color4f(128,200,30); }
+};
 class PolySetQ
 {
 public:
@@ -24,10 +32,9 @@ public:
 	size_t vertcount;
 	typedef std::vector<size_t> Polygon;
 	std::vector<Polygon> polygons;
-	typedef std::vector<size_t> Volume;
-	std::vector<Volume> volumes;
+	std::vector< VolumeQ > volumes;
 	void append_volume() {
-		Volume v;
+		VolumeQ v;
 		volumes.push_back(v);
 	}
 	void append_poly() {

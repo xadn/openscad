@@ -1000,6 +1000,10 @@ add_cmdline_test(openscad-camcenter EXE ${OPENSCAD_BINPATH}
                  SUFFIX png
                  FILES ${CMAKE_SOURCE_DIR}/../examples/example001.scad)
 
+# STL output
+add_cmdline_test(openscad-stlexport EXE ${OPENSCAD_BINPATH}
+                 SUFFIX stl
+                 FILES ${CMAKE_SOURCE_DIR}/../examples/example001.scad)
 
 
 message("Available test configurations: ${TEST_CONFIGS}")

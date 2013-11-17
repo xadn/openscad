@@ -242,7 +242,7 @@ void export_amf(CGAL_Nef_polyhedron *root_N, std::ostream &output, OpenSCAD::fac
 	}
 	output << " </vertices>\n\n";
 	for (size_t i=0;i<Q.volumes.size();i++) {
-		output << " <volume>\n";q
+		output << " <volume>\n";
 		for (size_t j=0;j<Q.volumes[i].size();j++) {
 			size_t pgon_index = Q.volumes[i][j];
 			size_t vertindex0 = Q.polygons[ pgon_index ][0];
