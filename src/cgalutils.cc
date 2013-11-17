@@ -2,6 +2,7 @@
 
 #include "cgalutils.h"
 #include "polyset.h"
+#include "polysetq.hpp"
 #include "printutils.h"
 #include "facetess.h"
 
@@ -225,27 +226,104 @@ void ZRemover::visit( CGAL_Nef_polyhedron3::Halffacet_const_handle hfacet )
 	PRINTD(" <!-- ZRemover Halffacet visit end -->");
 }
 
-using namespace OpenSCAD;
-
 class TessBuilder : public CGAL::Modifier_base<CGAL_HDS>
 {
 public:
-	facetess::tesstype faces_tess;
-	facetess::tesstype faces_w_holes_tess;
+	OpenSCAD::facetess::tesstype faces_tess;
+	OpenSCAD::facetess::tesstype faces_w_holes_tess;
+	PolySetQ &pset;
 	const CGAL_Nef_polyhedron3 &nef;
-	TessBuilder(const CGAL_Nef_polyhedron3 &N);
+	TessBuilder(const CGAL_Nef_polyhedron3 &N, PolySetQ &Q);
 	void operator()(CGAL_HDS& hds);
 	~TessBuilder();
 };
 
-TessBuilder::TessBuilder(const CGAL_Nef_polyhedron3 &N):nef(N)
+TessBuilder::TessBuilder(const CGAL_Nef_polyhedron3 &N, PolySetQ &Q):pset(Q),nef(N)
 {
-	faces_tess=facetess::CGAL_NEF_STANDARD;
-	faces_w_holes_tess=facetess::CGAL_NEF_STANDARD;
+	faces_tess=OpenSCAD::facetess::CGAL_NEF_STANDARD;
+	faces_w_holes_tess=OpenSCAD::facetess::CGAL_NEF_STANDARD;
 }
 
 TessBuilder::~TessBuilder()
 {
+}
+
+bool nef3_volumes_to_polysetq( const CGAL_Nef_polyhedron3 &N, PolySetQ &Q,
+	OpenSCAD::facetess::tesstype faces_tess, OpenSCAD::facetess::tesstype faces_w_holes_tess )
+{
+	// Volumes only work if we regularize the polyhedron first. See
+	// https://github.com/noelwarr/rgal/blob/master/cpp/rb_Nef_polyhedron_3.cpp
+	CGAL_Nef_polyhedron3::Volume_const_iterator vol_i;
+	CGAL_Nef_polyhedron3 reg_nef_poly = N.regularization();
+ 	CGAL_forall_volumes(vol_i,reg_nef_poly) {
+		if ((*vol_i).mark()) { // use inner volumes, not outer volumes
+			Q.append_volume();
+			CGAL_Polyhedron P;
+			// Use 'shell' visitor pattern.
+			// convert_inner_shell_to_polyhedron is buggy.
+			CGAL_Nef_polyhedron3::Shell_entry_const_iterator shell_i;
+			CGAL_forall_shells_of(shell_i, vol_i) {
+				CGAL_Nef_polyhedron3::SFace_const_handle sfch(shell_i);
+				CGAL_Nef_polyhedron3 sub_nef_poly(reg_nef_poly,sfch);
+				PolySetQ tmp;
+				nef3_to_polysetq( sub_nef_poly, tmp, faces_tess, faces_w_holes_tess );
+				Q.merge_polygons( tmp );
+			} // forall shells
+		} // inner volume
+	} // forall volumes
+	return true;
+}
+
+bool nef3_to_polysetq( const CGAL_Nef_polyhedron3 &N, PolySetQ &Q,
+	OpenSCAD::facetess::tesstype faces_tess, OpenSCAD::facetess::tesstype faces_w_holes_tess )
+{
+	if (faces_tess==OpenSCAD::facetess::CGAL_NEF_STANDARD || faces_w_holes_tess==OpenSCAD::facetess::CGAL_NEF_STANDARD) {
+		PRINTD("PolySetQ cannot use CGAL Nef Standard facetess. Using Earclip");
+		faces_tess = OpenSCAD::facetess::EARCLIP;
+		faces_w_holes_tess = OpenSCAD::facetess::EARCLIP;
+	}
+	PRINTDB("nef3 to polysetq. facetess: %i %i", faces_tess%faces_w_holes_tess);
+	OpenSCAD::facetess::tessellater_status status;
+	Q.clear();
+	Q.append_volume();
+	std::vector<CGAL_Polygon_3> pgons;
+	CGAL_Nef_polyhedron3::Halffacet_const_iterator hfaceti;
+	CGAL_forall_halffacets( hfaceti, N ) {
+		if (hfaceti->incident_volume()->mark() == 0) continue;
+		PRINTD("");
+		PRINTD("iterating through next facet...");
+		CGAL_Nef_polyhedron3::Halffacet_cycle_const_iterator cyclei;
+		std::vector<CGAL_Polygon_3> contours;
+		CGAL_forall_facet_cycles_of( cyclei, hfaceti ) {
+			CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c1(cyclei);
+			CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c2(c1);
+			CGAL_Polygon_3 contour;
+			CGAL_For_all( c1, c2 ) {
+				//pgon.push_back(c1->source()->source()->point());
+				contour.push_back(c1->source()->center_vertex()->point());
+			}
+			contours.push_back( contour );
+		}
+		// first contour = outer body. next contours = holes.
+		std::vector<CGAL_Polygon_3> pgons_from_tesser;
+		if (pgons.size()>1)
+			status = OpenSCAD::facetess::tessellate( contours, pgons_from_tesser, faces_tess );
+		else
+			status = OpenSCAD::facetess::tessellate( contours, pgons_from_tesser, faces_w_holes_tess );
+		if (status!=OpenSCAD::facetess::TESSELLATER_OK) PRINTD("ERROR: tess status not OK");
+		PRINTDB("pgon contours output: %i", pgons_from_tesser.size());
+		for (size_t i=0;i<pgons_from_tesser.size();i++) {
+			CGAL_Polygon_3 pgon = pgons_from_tesser[i];
+			Q.append_poly();
+			for (size_t j=0;j<pgon.size();j++) {
+				CGAL_Point_3 point = pgon[j];
+				Q.append_vertex( point );
+			}
+		}
+		PRINTD("facet processed.");
+	}
+	PRINTDB("PolySetQ created. Vertices: %i Polygons: %i Volumes: %i",Q.vertlist.size()%Q.polygons.size()%Q.volumes.size());
+	return true;
 }
 
 // called when Polyhedron.delegate() is called.
@@ -253,97 +331,38 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 {
 	PRINTD("TessBuilder operator()");
 	hds.clear();
-	std::map<CGAL_HDS::Vertex::Point,int> vertmap1;
-	std::vector<CGAL_HDS::Vertex::Point> vertlist;
-	int vertcount = 0;
-
-	std::vector<CGAL_Polygon_3> newpgons;
-
-	CGAL_Nef_polyhedron3::Halffacet_const_iterator hfaceti;
-	CGAL_forall_halffacets( hfaceti, nef ) {
-		if (hfaceti->incident_volume()->mark() == 0) continue;
-		PRINTD("");
-		PRINTD("iterating through next facet...");
-		CGAL_Nef_polyhedron3::Halffacet_cycle_const_iterator cyclei;
-		std::vector<CGAL_Polygon_3> pgons;
-		CGAL_forall_facet_cycles_of( cyclei, hfaceti ) {
-			CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c1(cyclei);
-			CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c2(c1);
-			CGAL_Polygon_3 pgon;
-			CGAL_For_all( c1, c2 ) {
-				//pgon.push_back(c1->source()->source()->point());
-				pgon.push_back(c1->source()->center_vertex()->point());
-			}
-			pgons.push_back( pgon );
-		}
-		// first polygon = outer contour. next polygons = hole contours.
-		std::vector<CGAL_Polygon_3> pgons_from_tesser;
-		PRINTDB("pgon input. contours: %i", pgons.size());
-		for (size_t pi=0;pi<pgons.size();pi++) {
-			PRINTDB("pgon %i, # pts: %i",pi%pgons[pi].size());
-		}
-		facetess::tessellater_status status;
-		if (pgons.size()>1)
-			status = facetess::tessellate( pgons, pgons_from_tesser, faces_tess );
-		else
-			status = facetess::tessellate( pgons, pgons_from_tesser, faces_w_holes_tess );
-		if (status!=facetess::TESSELLATER_OK) PRINTD("ERROR: tess status not OK");
-		PRINTDB("pgon contours output: %i", pgons_from_tesser.size());
-		for (size_t i=0;i<pgons_from_tesser.size();i++) {
-			CGAL_Polygon_3 pgon = pgons_from_tesser[i];
-			newpgons.push_back( pgon );
-			for (size_t j=0;j<pgon.size();j++) {
-				CGAL_Point_3 point = pgon[j];
-				// add new points created by tessellation
-				if (vertmap1.count(point)==0) {
-					vertmap1[ point ] = vertcount;
-					vertcount++;
-					vertlist.push_back( point );
-				}
-			}
-		}
-		PRINTD("facet processed.");
-	}
-	PRINTDB("Number of polygons: %i",newpgons.size());
-
 
 	CGAL_Polybuilder B(hds, true);
 	PRINTD("Tess Polyhedron Builder");
 	PRINTDB(" PB err status: %i ", B.error() );
-	B.begin_surface(vertlist.size(), newpgons.size() );
+	B.begin_surface(pset.vertlist.size(), pset.polygons.size() );
 	PRINTDB(" PB err status: %i ", B.error() );
 	PRINTD(" Index build");
-	for (size_t i=0;i<vertlist.size();i++) {
-		B.add_vertex( vertlist[i] );
-		PRINTDB("Vertex Index: %i data: %s",i%vertlist[i]);
+	for (size_t i=0;i<pset.vertlist.size();i++) {
+		B.add_vertex( pset.vertlist[i] );
+		PRINTDB("  vertex index: %i data: %s",i%pset.vertlist[i]);
 	}
 	PRINTDB(" PB err status: %i ", B.error() );
+	PRINTD(" Facets build");
 	bool error_tripped = false;
-	for (size_t i=0;i<newpgons.size();i++) {
+	for (size_t i=0;i<pset.polygons.size();i++) {
 		B.begin_facet();
-		PRINTDB(" Adding facet %i",i);
-		CGAL_Polygon_3 pgon = newpgons[i];
+		PRINTDB("  facet index: %i",i);
+		PolySetQ::Polygon pgon = pset.polygons[i];
 		for (size_t j=0;j<pgon.size();j++) {
-			CGAL_Point_3 point = pgon[j];
-			if (vertmap1.count(point)) {
-				int vert_index = vertmap1[ point ] ;
-				B.add_vertex_to_facet( vert_index );
-				PRINTDB(" adding pt to facet %i pt: %s (pt index %i) ",i%point%vert_index);
-			} else {
-				PRINTB("ERROR: Building polyhedron, vertmap miss: %s",point);
-			}
+			size_t point_index = pgon[j];
+			B.add_vertex_to_facet( point_index );
 		}
 		B.end_facet();
-		// f 362 p 270, 272, 218
-		// f 832 p 270, 272, 220
 		bool errstat = B.error();
 		PRINTDB(" PB err status: %i ", errstat );
 		if (errstat && !error_tripped) {
 			error_tripped = true;
 			PRINTB("ERROR: TessBuilder error while adding facet %i. Points:",i);
-			for (size_t j=0;j<pgon.size();j++) {
-				PRINTB("ERROR: pt index: %i data: %s", vertmap1[pgon[j]]%pgon[j] );
-			}
+//			for (size_t j=0;j<pgon.size();j++) {
+//				CGAL_HDS::Vertex::Point p = pgon[j];
+//				PRINTB("ERROR: pt index: %i data: %s", %p );
+//			}
 		}
 	}
 	B.end_surface();
@@ -357,19 +376,22 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 /* Convert Nef Polyhedron3 to Polyhedron3 with custom face tessellation.
    Faces-without-holes can be tessellated separately from faces-with-holes.
 */
-void nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &N, CGAL_Polyhedron &P,
-	facetess::tesstype faces_tess, facetess::tesstype faces_with_holes_tess )
+bool nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &N, CGAL_Polyhedron &P,
+	OpenSCAD::facetess::tesstype faces_tess, OpenSCAD::facetess::tesstype faces_with_holes_tess )
 {
-	if (faces_tess == facetess::CGAL_NEF_STANDARD && faces_with_holes_tess == facetess::CGAL_NEF_STANDARD ) {
+	if (faces_tess == OpenSCAD::facetess::CGAL_NEF_STANDARD && faces_with_holes_tess == OpenSCAD::facetess::CGAL_NEF_STANDARD ) {
   		N.convert_to_Polyhedron( P );
 	}
 	else {
+		PolySetQ Q;
+		nef3_to_polysetq( N, Q, faces_tess, faces_with_holes_tess );
 		P.clear();
-		TessBuilder builder( N );
+		TessBuilder builder( N, Q );
 		builder.faces_tess = faces_tess;
 		builder.faces_w_holes_tess = faces_with_holes_tess;
 		P.delegate( builder );
 	}
+	return true;
 }
 
 #endif /* ENABLE_CGAL */

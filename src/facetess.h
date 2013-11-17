@@ -33,6 +33,7 @@ typedef enum tessellater_status_e {
 	CANNOT_EARCLIP_HOLE,
 	NONSIMPLE_EAR,
 	POLYGON_WITHOUT_EAR,
+	UNKNOWN_TESSELLATER,
 } tessellater_status;
 
 /* Tessellate the input 3d polygon (with holes) into one or more output

@@ -5,14 +5,19 @@
 #include "svg.h"
 #include "printutils.h"
 #include "facetess.h"
+#include "polysetq.hpp"
 
 class PolySet *createPolySetFromPolyhedron(const CGAL_Polyhedron &p);
 CGAL_Polyhedron *createPolyhedronFromPolySet(const class PolySet &ps);
 CGAL_Iso_cuboid_3 bounding_box( const CGAL_Nef_polyhedron3 &N );
 CGAL_Iso_rectangle_2e bounding_box( const CGAL_Nef_polyhedron2 &N );
 using namespace OpenSCAD::facetess;
-void nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &N, CGAL_Polyhedron &P,
+bool nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &N, CGAL_Polyhedron &P,
  tesstype facetess, tesstype faces_w_holes_tess );
+bool nef3_to_polysetq( const CGAL_Nef_polyhedron3 &N, PolySetQ &Q,
+ tesstype facetess, tesstype faces_w_holes_tess );
+bool nef3_volumes_to_polysetq( const CGAL_Nef_polyhedron3 &N, PolySetQ &Q,
+ tesstype facetess = CGAL_NEF_STANDARD, tesstype faces_w_holes_tess = CGAL_NEF_STANDARD );
 
 /*
 

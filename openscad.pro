@@ -370,7 +370,8 @@ HEADERS += src/cgal.h \
            src/PolySetCGALEvaluator.h \
            src/CGALRenderer.h \
            src/CGAL_Nef_polyhedron.h \
-           src/cgalworker.h
+           src/cgalworker.h \
+           src/polysetq.hpp
 
 SOURCES += src/cgalutils.cc \
            src/CGALEvaluator.cc \

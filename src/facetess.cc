@@ -355,15 +355,16 @@ tessellater_status clip_ear( TessKernel_Polygon_2 &pgon, TessKernel_Polygon_2 &n
 		TessKernel_Point_2 p1 = pgon[index0];
 		TessKernel_Point_2 p2 = pgon[index1];
 		TessKernel_Point_2 p3 = pgon[index2];
-		//PRINTDB("earsearch. idxs: %i %i %i",index0%index1%index2);
+		/*PRINTDB("earsearch. idxs: %i %i %i",index0%index1%index2);
 		double ex1 = CGAL::to_double(p1.x());
 		double ey1 = CGAL::to_double(p1.y());
 		double ex2 = CGAL::to_double(p2.x());
 		double ey2 = CGAL::to_double(p2.y());
 		double ex3 = CGAL::to_double(p3.x());
 		double ey3 = CGAL::to_double(p3.y());
-		//PRINTB("edata=[[%d,%d],[%d,%d],[%d,%d]]",ex1%ey1%ex2%ey2%ex3%ey3);
-		//PRINTB("edataRat=[%s %s %s]",p1%p2%p3);
+		PRINTB("edata=[[%d,%d],[%d,%d],[%d,%d]]",ex1%ey1%ex2%ey2%ex3%ey3);
+		PRINTB("edataRat=[%s %s %s]",p1%p2%p3);
+		*/
 		newear.push_back( p1 );
 		newear.push_back( p2 );
 		newear.push_back( p3 );
@@ -503,13 +504,13 @@ tessellater_status remove_top_hole( TessKernel_Face_2 &input )
 	input[0] = newbody;
 	PRINTD("Removed hole");
 	PRINTDB("New Face body. simple: %i #pts: %i",input[0].is_simple()%input[0].size());
-		std::stringstream s; s<<"posthole=[";
+		/*std::stringstream s; s<<"posthole=[";
 		for (size_t j=0;j<input[0].size();j++) {
 			double x = CGAL::to_double(input[0][j].x());
 			double y = CGAL::to_double(input[0][j].y());
 			s << " [ " << x << "," << y << "],";
 		} s<<"]";
-		PRINTB("%s",s.str());
+		PRINTDB("%s",s.str());*/
 	for (size_t i=0;i<input[0].size();i++) {
 		PRINTDB(" pt %i: %s",i%input[0][i]);
 	}
@@ -866,7 +867,7 @@ tessellater_status cdt_tess( TessKernel_Face_2 &tk_input2dface,
 	std::map<CDTKernel_Point_2,TessKernel_Point_2> vertmap_k;
 	CDTKernel_Face_2 cdtface;
 	std::vector<CDTKernel_Polygon_2> cdtpgons;
-	convert_kernel( tk_input2dface, cdtface, vertmap_k );
+ 	convert_kernel( tk_input2dface, cdtface, vertmap_k );
 	tessellater_status status = quality_check<CDTKernel_Point_2,CDTKernel_Polygon_2>( cdtface );
 	if (status!=TESSELLATER_OK) {
 		PRINTD("Tessellater - CDT Quality check failed");
@@ -931,6 +932,8 @@ tessellater_status do_tessellation(
 		status = cdt_tess( tk_input2dface, tk_output_pgons2d, original_body_orientation );
 	} else if (tess==EARCLIP) {
 		status = earclip_tess( tk_input2dface, tk_output_pgons2d, original_body_orientation );
+	} else {
+		status = UNKNOWN_TESSELLATER;
 	}
 	if (status!= TESSELLATER_OK) {
 		PRINTD("Tessellation failed. no output polygons");
@@ -1012,13 +1015,14 @@ tessellater_status OpenSCAD::facetess::tessellate(
 
 	PRINTDB( "tessellated. status: %i", status );
 	if (status!=TESSELLATER_OK) {
-		PRINT("WARNING: Tessellator was not able to process facet. Points:");
+		PRINT("ERROR: Tessellator was not able to process facet. Points:");
 		for (size_t i=0;i<input_pgon3d.size();i++) {
 			for (size_t j=0;j<input_pgon3d[i].size();j++) {
 				TessKernel_Point_3 tess_point = input_pgon3d[i][j];
-				PRINTB("WARNING: %s", tess_point);
+				PRINTB("ERROR: pgon: %i pt %i coords %s", i%j%tess_point);
 			}
 		}
+		PRINT("ERROR: (end of point list)");
 		tess_pgon3d_out = input_pgon3d;
 	}
 
