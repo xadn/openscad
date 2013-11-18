@@ -172,6 +172,7 @@ public slots:
 	void viewCenter();
 	void viewPerspective();
 	void viewOrthogonal();
+        void viewResetView();
 	void hideConsole();
 	void animateUpdateDocChanged();
 	void animateUpdate();

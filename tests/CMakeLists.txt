@@ -212,29 +212,20 @@ if(NOT ${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
 endif()
 
 # Priority
-# 3. EIGENDIR if set (EIGEN2DIR for backwards compatability)
+# 3. EIGENDIR if set
 # 1. OPENSCAD_LIBRARIES eigen3
-# 2. OPENSCAD_LIBRARIES eigen2
 # 4. system's standard include paths for eigen3
-# 5. system's standard include paths for eigen2
 
-set(EIGEN2_DIR "$ENV{EIGEN2DIR}")
 set(EIGEN_DIR "$ENV{EIGENDIR}")
 set(OPENSCAD_LIBDIR "$ENV{OPENSCAD_LIBRARIES}")
 
 if (EIGEN_DIR)
-  set(EIGHINT ${EIGEN_DIR}/include/eigen3 ${EIGEN_DIR}/include/eigen2 ${EIGEN_DIR})
+  set(EIGHINT ${EIGEN_DIR}/include/eigen3 ${EIGEN_DIR})
   find_path(EIGEN_INCLUDE_DIR Eigen/Core HINTS ${EIGHINT})
-endif()
-if (EIGEN2_DIR)
-  find_path(EIGEN_INCLUDE_DIR Eigen/Core HINTS ${EIGEN2_DIR}/include/eigen2 ${EIGEN2_DIR})
 endif()
 
 if (NOT EIGEN_INCLUDE_DIR)
   find_path(EIGEN_INCLUDE_DIR Eigen/Core HINTS ${OPENSCAD_LIBDIR}/include/eigen3)
-endif()
-if (NOT EIGEN_INCLUDE_DIR)
-  find_path(EIGEN_INCLUDE_DIR Eigen/Core HINTS ${OPENSCAD_LIBDIR}/include/eigen2)
 endif()
 
 if (NOT EIGEN_INCLUDE_DIR)
@@ -246,18 +237,6 @@ if (NOT EIGEN_INCLUDE_DIR)
     find_path(EIGEN_INCLUDE_DIR Eigen/Core HINTS /opt/local/include/eigen3)
   else()
     find_path(EIGEN_INCLUDE_DIR Eigen/Core HINTS /usr/include/eigen3)
-  endif()
-endif()
-
-if (NOT EIGEN_INCLUDE_DIR)
-  if (${CMAKE_SYSTEM_NAME} MATCHES "FreeBSD")
-    find_path(EIGEN_INCLUDE_DIR Eigen/Core HINTS /usr/local/include/eigen2)
-  elseif (${CMAKE_SYSTEM_NAME} MATCHES "NetBSD")
-    find_path(EIGEN_INCLUDE_DIR Eigen/Core HINTS /usr/pkg/include/eigen2)
-  elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
-    find_path(EIGEN_INCLUDE_DIR Eigen/Core HINTS /opt/local/include/eigen2)
-  else()
-    find_path(EIGEN_INCLUDE_DIR Eigen/Core HINTS /usr/include/eigen2)
   endif()
 endif()
 
@@ -450,9 +429,11 @@ message(STATUS "OpenSCAD version: ${VERSION}")
 string(REGEX MATCHALL "^[0-9]+|[0-9]+|[0-9]+$" MYLIST "${VERSION}")
 list(GET MYLIST 0 OPENSCAD_YEAR)
 list(GET MYLIST 1 OPENSCAD_MONTH)
+math(EXPR OPENSCAD_MONTH ${OPENSCAD_MONTH}) # get rid of leading zero
 list(LENGTH MYLIST VERSIONLEN)
 if (${VERSIONLEN} EQUAL 3)
   list(GET MYLIST 2 OPENSCAD_DAY)
+  math(EXPR OPENSCAD_DAY ${OPENSCAD_DAY}) # get rid of leading zero
 endif()
 
 add_definitions(-DOPENSCAD_VERSION=${VERSION} -DOPENSCAD_YEAR=${OPENSCAD_YEAR} -DOPENSCAD_MONTH=${OPENSCAD_MONTH})
@@ -803,7 +784,8 @@ list(APPEND ECHO_FILES ${FUNCTION_FILES}
             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/lookup-tests.scad
             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/expression-shortcircuit-tests.scad
             ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/parent_module-tests.scad
-            ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/children-tests.scad)
+            ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/children-tests.scad
+            ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/range-tests.scad)
 
 list(APPEND DUMPTEST_FILES ${FEATURES_FILES} ${EXAMPLE_FILES})
 list(APPEND DUMPTEST_FILES ${CMAKE_SOURCE_DIR}/../testdata/scad/misc/escape-test.scad
