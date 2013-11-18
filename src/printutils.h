@@ -23,9 +23,14 @@ void PRINT(const std::string &msg);
 void PRINT_NOCACHE(const std::string &msg);
 #define PRINTB_NOCACHE(_fmt, _arg) do { PRINT_NOCACHE(str(boost::format(_fmt) % _arg)); } while (0)
 
-// usage:
-// PRINTD(" Outputting 3 points: ");
-// PRINTDB("point0, point1, point2: %s %s %s", p0 % p1 % p2 );
+/*PRINTD: usage in code:
+  PRINTD(" Outputting 3 points: ");
+  PRINTDB("point0, point1, point2: %s %s %s", p0 % p1 % p2 );
+  usage on cmdline:
+  openscad in.scad -o x.png --debug=all # prints all debug messages
+  openscad in.scad -o x.png --debug=export # prints debugs from export.cc
+  openscad in.scad -o x.png --debug=cgalutils # prints debugs from cgalutils.cc
+*/
 
 void PRINTDEBUG(const std::string &filename,const std::string &msg);
 #define PRINTD(_arg) do { PRINTDEBUG(std::string(__FILE__),_arg); } while (0)

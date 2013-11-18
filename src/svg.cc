@@ -237,6 +237,10 @@ std::string dump_svg( const CGAL_Nef_polyhedron3 &N )
 	std::stringstream out;
 	std::string linewidth = "0.05";
 	out << "<!--CGAL_Nef_polyhedron3 dump begin-->\n";
+	out << "<!-- Vertices: " << N.number_of_vertices();
+	out << " Facets: " << N.number_of_facets();
+	out << " Volumes: " << N.number_of_volumes();
+	out << " -->\n";
 	out << svg_header() << "\n" << svg_border() << "\n";
 	out << svg_styleblock( linewidth ) << "\n" << svg_axes() << "\n";
 

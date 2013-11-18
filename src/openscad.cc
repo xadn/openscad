@@ -625,7 +625,7 @@ int main(int argc, char **argv)
 		help(argv[0]);
 	}
 
-	OpenSCAD::debug = "none";
+	OpenSCAD::debug = "0";
 	if (vm.count("debug")) {
 		OpenSCAD::debug = vm["debug"].as<string>();
 	}

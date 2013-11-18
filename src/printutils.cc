@@ -56,6 +56,8 @@ void PRINT_NOCACHE(const std::string &msg)
 
 void PRINTDEBUG(const std::string &filename, const std::string &msg)
 {
+	// see printutils.h for usage instructions
+	if (OpenSCAD::debug=="0") return;
 	std::string fname(filename);
 	boost::replace_all( fname, "src/", "" );
 	std::string shortfname(fname);
@@ -63,9 +65,9 @@ void PRINTDEBUG(const std::string &filename, const std::string &msg)
 	boost::replace_all( shortfname, ".h", "");
 	boost::replace_all( shortfname, ".hpp", "");
 	if (OpenSCAD::debug=="all") {
-		PRINT_NOCACHE( "DBG "+fname+":"+ msg );
-	} else if (OpenSCAD::debug.find(shortfname) != std::string::npos) {
-		PRINT_NOCACHE( "DBG "+fname+":"+ msg );
+		PRINT_NOCACHE( shortfname+": "+ msg );
+	} else if (shortfname.find(OpenSCAD::debug) != std::string::npos) {
+		PRINT_NOCACHE( shortfname+": "+ msg );
 	}
 }
 
