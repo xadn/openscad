@@ -75,16 +75,12 @@ public:
 		}
 
 		B.begin_surface(vertices.size(), ps.polygons.size());
-#ifdef GEN_SURFACE_DEBUG
-		printf("=== CGAL Surface ===\n");
-#endif
+		PRINTD("=== Polyset->Polyhedron Builder. begin surface ===");
 
 		for (size_t i = 0; i < vertices.size(); i++) {
 			const CGALPoint &p = vertices[i];
 			B.add_vertex(p);
-#ifdef GEN_SURFACE_DEBUG
-			printf("%d: %f %f %f\n", i, p.x().to_double(), p.y().to_double(), p.z().to_double());
-#endif
+			PRINTDB(" Vert %d: %f %f %f", i%p.x().to_double()%p.y().to_double()%p.z().to_double());
 		}
 
 		for (size_t i = 0; i < ps.polygons.size(); i++) {
@@ -97,35 +93,28 @@ public:
 				if (fc[v]++ > 0)
 					facet_is_degenerated = true;
 			}
-			
+
 			if (!facet_is_degenerated)
 				B.begin_facet();
-#ifdef GEN_SURFACE_DEBUG
-			printf("F:");
-#endif
+			PRINTD("Facet:");
 			for (size_t j = 0; j < poly->size(); j++) {
 				const Vector3d &p = poly->at(j);
-#ifdef GEN_SURFACE_DEBUG
-				printf(" %d (%f,%f,%f)", vertices_idx.data(p[0], p[1], p[2]), p[0], p[1], p[2]);
-#endif
+				PRINTDB(" %d (%f,%f,%f)", vertices_idx.data(p[0], p[1], p[2])%p[0]%p[1]%p[2]);
 				if (!facet_is_degenerated)
 					B.add_vertex_to_facet(vertices_idx.data(p[0], p[1], p[2]));
 			}
-#ifdef GEN_SURFACE_DEBUG
 			if (facet_is_degenerated)
-				printf(" (degenerated)");
-			printf("\n");
-#endif
+				PRINTD(" (degenerated)");
 			if (!facet_is_degenerated)
 				B.end_facet();
 		}
 
-#ifdef GEN_SURFACE_DEBUG
-		printf("====================\n");
-#endif
+		PRINTD("=== Polyset->Polyhedron Builder. end surface ===");
 		B.end_surface();
 
 		#undef PointKey
+
+		hds.normalize_border();
 	}
 };
 

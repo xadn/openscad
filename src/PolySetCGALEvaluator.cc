@@ -428,6 +428,7 @@ PolySet *PolySetCGALEvaluator::evaluatePolySet(const CgaladvNode &node)
 
 PolySet *PolySetCGALEvaluator::evaluatePolySet(const RenderNode &node)
 {
+	PRINTD("evaluate polyset render node");
 	CGAL_Nef_polyhedron N = this->cgalevaluator.evaluateCGALMesh(node);
 	PolySet *ps = NULL;
 	if (!N.isNull()) {
@@ -435,10 +436,16 @@ PolySet *PolySetCGALEvaluator::evaluatePolySet(const RenderNode &node)
 			PRINT("WARNING: Body of render() isn't valid 2-manifold!");
 		}
 		else {
-			ps = N.convertToPolyset();
-			if (ps) ps->convexity = node.convexity;
+		        CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
+			try {
+				ps = N.convertToPolyset();
+				if (ps) ps->convexity = node.convexity;
+			} catch (const std::exception &e) {
+				PRINT("error");
+			}
 		}
 	}
+	PRINTD("evaluate polyset render node end");
 	return ps;
 }
 

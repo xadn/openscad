@@ -26,6 +26,7 @@ public:
 	CGAL_Nef_polyhedron &minkowski(const CGAL_Nef_polyhedron &other);
 	CGAL_Nef_polyhedron copy() const;
 	std::string dump() const;
+	std::string summary() const;
 	int weight() const;
 	class PolySet *convertToPolyset();
 	class DxfData *convertToDxfData() const;

@@ -93,6 +93,25 @@ std::string CGAL_Nef_polyhedron::dump() const
 		return std::string("Nef Polyhedron with dimension != 2 or 3");
 }
 
+std::string CGAL_Nef_polyhedron::summary() const
+{
+	std::stringstream s;
+	if (dim==3) {
+		s << "Dim: " << dim
+		  << "Vertices: " << p3->number_of_vertices()
+		  << "Facets: " << p3->number_of_facets()
+		  << "Volumes: " << p3->number_of_volumes()
+		  << "Valid: " << p3->is_valid()
+		  << "Simple: " << p3->is_simple();
+	} else if (dim==2) {
+		CGAL_Nef_polyhedron2::Explorer ex = p2->explorer();
+		s << "Dim: " << dim
+		  << "Vertices: " << ex.number_of_vertices()
+		  << "Edges: " << ex.number_of_edges()
+		  << "Faces: " << ex.number_of_faces();
+	}
+	return s.str();
+}
 
 void CGAL_Nef_polyhedron::transform( const Transform3d &matrix )
 {

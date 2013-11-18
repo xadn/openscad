@@ -24,6 +24,7 @@
 #include <CGAL/IO/Polyhedron_iostream.h>
 #include <CGAL/convex_hull_3.h>
 #include <CGAL/Subdivision_method_3.h>
+#include "svg.h"
 #ifdef PREV_NDEBUG
 #define NDEBUG PREV_NDEBUG
 #endif
@@ -565,6 +566,7 @@ void CGALEvaluator::addToParent(const State &state, const AbstractNode &node, co
 
 CGAL_Nef_polyhedron CGALEvaluator::evaluateCGALMesh(const PolySet &ps)
 {
+	PRINTD("CGALEvaluator::evaluateCGALMEsh( polyset )");
 	if (ps.empty()) return CGAL_Nef_polyhedron(ps.is2d ? 2 : 3);
 
 	if (ps.is2d)
@@ -822,14 +824,18 @@ CGAL_Nef_polyhedron CGALEvaluator::evaluateCGALMesh(const PolySet &ps)
 			// FIXME: Are we leaking memory for the CGAL_Polyhedron object?
 			CGAL_Polyhedron *P = createPolyhedronFromPolySet(ps);
 			if (P) {
+				PRINTDB("New Polyhedron. Vertices: %i Facets: %i Valid: %i Norm Border valid: %i",P->size_of_vertices()%P->size_of_facets()%P->is_valid()%P->normalized_border_is_valid());
 				N = new CGAL_Nef_polyhedron3(*P);
+				PRINTDB("New CGAL Nef polyhedron: Vertices: %i Facets: %i Volumes: %i Valid: %i Simple: %i", N->number_of_vertices()%N->number_of_facets()%N->number_of_volumes()%N->is_valid()%N->is_simple() );
 			}
 		}
 		catch (const CGAL::Assertion_exception &e) {
 			PRINTB("CGAL error in CGAL_Nef_polyhedron3(): %s", e.what());
 		}
 		CGAL::set_error_behaviour(old_behaviour);
+		PRINTD("CGALEvaluator::evaluateCGALMEsh( polyset ) end");
 		return CGAL_Nef_polyhedron(N);
 	}
+	PRINTD("CGALEvaluator::evaluateCGALMEsh( polyset ) end");
 	return CGAL_Nef_polyhedron();
 }
