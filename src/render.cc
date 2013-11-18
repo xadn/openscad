@@ -63,6 +63,7 @@ AbstractNode *RenderModule::instantiate(const Context *ctx, const ModuleInstanti
 
 class PolySet *RenderNode::evaluate_polyset(PolySetEvaluator *ps) const
 {
+	assert(ps);
 	return ps->evaluatePolySet(*this);
 }
 

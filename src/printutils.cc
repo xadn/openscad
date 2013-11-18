@@ -1,11 +1,12 @@
 #include "printutils.h"
 #include <sstream>
 #include <stdio.h>
+#include <boost/algorithm/string.hpp>
 
 std::list<std::string> print_messages_stack;
 OutputHandlerFunc *outputhandler = NULL;
 void *outputhandler_data = NULL;
-bool OpenSCAD::debug = false;
+std::string OpenSCAD::debug("none");
 
 void set_output_handler(OutputHandlerFunc *newhandler, void *userdata)
 {
@@ -53,13 +54,18 @@ void PRINT_NOCACHE(const std::string &msg)
 	}
 }
 
-void PRINTDEBUG(const std::string &msg)
+void PRINTDEBUG(const std::string &filename, const std::string &msg)
 {
-	// what if.. we could at cmdline say --debug=CGAL_Nef_polyhedron.cc
-	// and it would only dump DEBUG from that file?
-	// is that possible? even more, what about regex case-insense a str
-	if (OpenSCAD::debug) {
-		PRINT_NOCACHE( "DEBUG: " + msg );
+	std::string fname(filename);
+	boost::replace_all( fname, "src/", "" );
+	std::string shortfname(fname);
+	boost::replace_all( shortfname, ".cc", "");
+	boost::replace_all( shortfname, ".h", "");
+	boost::replace_all( shortfname, ".hpp", "");
+	if (OpenSCAD::debug=="all") {
+		PRINT_NOCACHE( "DBG "+fname+":"+ msg );
+	} else if (OpenSCAD::debug.find(shortfname) != std::string::npos) {
+		PRINT_NOCACHE( "DBG "+fname+":"+ msg );
 	}
 }
 

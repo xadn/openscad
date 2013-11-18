@@ -201,6 +201,7 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 	QCoreApplication app(argc, argv);
 	const std::string application_path = QApplication::instance()->applicationDirPath().toLocal8Bit().constData();
 #else
+	(void)argc;
 	const std::string application_path = boosty::stringy(boosty::absolute(boost::filesystem::path(argv[0]).parent_path()));
 #endif
 	parser_init(application_path, false);
@@ -624,9 +625,9 @@ int main(int argc, char **argv)
 		help(argv[0]);
 	}
 
-	OpenSCAD::debug = false;
+	OpenSCAD::debug = "none";
 	if (vm.count("debug")) {
-		OpenSCAD::debug = true;
+		OpenSCAD::debug = vm["debug"].as<string>();
 	}
 
 	OpenSCAD::facetess::tesstype facetess = OpenSCAD::facetess::CGAL_NEF_STANDARD;

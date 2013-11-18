@@ -1,10 +1,10 @@
-#include "CGAL_Nef_polyhedron.h"
-#include "cgal.h"
-#include "cgalutils.h"
 #include "printutils.h"
 #include "polyset.h"
 #include "dxfdata.h"
 #include "dxftess.h"
+#include "CGAL_Nef_polyhedron.h"
+#include "cgal.h"
+#include "cgalutils.h"
 
 CGAL_Nef_polyhedron::CGAL_Nef_polyhedron(CGAL_Nef_polyhedron2 *p)
 {
@@ -78,7 +78,7 @@ int CGAL_Nef_polyhedron::weight() const
 	Creates a new PolySet and initializes it with the data from this polyhedron
 
 	This method is not const since convert_to_Polyhedron() wasn't const
-  in earlier versions of CGAL.
+	in earlier versions of CGAL.
 
 	Note: Can return NULL if an error occurred
 */
@@ -95,14 +95,21 @@ PolySet *CGAL_Nef_polyhedron::convertToPolyset()
 		delete dd;
 	}
 	else if (this->dim == 3) {
+		PRINTDB("Nef Poly3: convert to polyset: N= \n%s",this->dump());
 		CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 		try {
 			CGAL_Polyhedron P;
 			this->p3->convert_to_Polyhedron(P);
 			ps = createPolySetFromPolyhedron(P);
 		}
+		catch (const CGAL::Assertion_exception &e) {
+			PRINTB("CGAL error in CGAL_Nef_polyhedron::convertToPolyset(): %s", e.what());
+		}
 		catch (const CGAL::Precondition_exception &e) {
 			PRINTB("CGAL error in CGAL_Nef_polyhedron::convertToPolyset(): %s", e.what());
+		}
+		catch (const std::exception &e) {
+			PRINTB("Exception: %s", e.what());
 		}
 		CGAL::set_error_behaviour(old_behaviour);
 	}
@@ -119,3 +126,5 @@ CGAL_Nef_polyhedron CGAL_Nef_polyhedron::copy() const
 	else if (copy.p3) copy.p3.reset(new CGAL_Nef_polyhedron3(*copy.p3));
 	return copy;
 }
+
+

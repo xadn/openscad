@@ -9,7 +9,7 @@
 typedef void (OutputHandlerFunc)(const std::string &msg, void *userdata);
 extern OutputHandlerFunc *outputhandler;
 extern void *outputhandler_data;
-namespace OpenSCAD { extern bool debug; }
+namespace OpenSCAD { extern std::string debug; }
 
 void set_output_handler(OutputHandlerFunc *newhandler, void *userdata);
 
@@ -27,9 +27,9 @@ void PRINT_NOCACHE(const std::string &msg);
 // PRINTD(" Outputting 3 points: ");
 // PRINTDB("point0, point1, point2: %s %s %s", p0 % p1 % p2 );
 
-void PRINTDEBUG(const std::string &msg);
-#define PRINTD(_arg) do { PRINTDEBUG(_arg); } while (0)
-#define PRINTDB(_fmt, _arg) do { PRINTDEBUG(str(boost::format(_fmt) % _arg)); } while (0)
+void PRINTDEBUG(const std::string &filename,const std::string &msg);
+#define PRINTD(_arg) do { PRINTDEBUG(std::string(__FILE__),_arg); } while (0)
+#define PRINTDB(_fmt, _arg) do { PRINTDEBUG(std::string(__FILE__),str(boost::format(_fmt) % _arg)); } while (0)
 
 void PRINT_CONTEXT(const class Context *ctx, const class Module *mod, const class ModuleInstantiation *inst);
 
