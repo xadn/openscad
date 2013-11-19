@@ -320,14 +320,14 @@ difference() { translate([0,0,0.1]) scale(0.9) cylinder(); cylinder(); }
 	// This prevents assertions in CGAL/Nef_3/polyhedron_3_to_nef_3.h
 	std::cout << "subdiv ran\n";
 
-	PolySet *psnew = createPolySetFromPolyhedron( ph );
-	if (psnew) {
-		CGAL_Polyhedron *phnew = createPolyhedronFromPolySet( *psnew );
-		delete psnew;
-		if (phnew) {
+	PolySet psnew;
+	bool ok = createPolySetFromPolyhedron( ph, psnew );
+	if ( ok ) {
+		CGAL_Polyhedron phnew;
+		ok = createPolyhedronFromPolySet( psnew, phnew );
+		if ( ok ) {
 			nef.reset();
-			nef = CGAL_Nef_polyhedron( new CGAL_Nef_polyhedron3( *phnew ) );
-			delete phnew;
+			nef = CGAL_Nef_polyhedron( new CGAL_Nef_polyhedron3( phnew ) );
 		}
 	}
 	return nef;
@@ -821,11 +821,11 @@ CGAL_Nef_polyhedron CGALEvaluator::evaluateCGALMesh(const PolySet &ps)
 		CGAL_Nef_polyhedron3 *N = NULL;
 		CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 		try {
-			// FIXME: Are we leaking memory for the CGAL_Polyhedron object?
-			CGAL_Polyhedron *P = createPolyhedronFromPolySet(ps);
-			if (P) {
+			CGAL_Polyhedron P;
+			book ok = createPolyhedronFromPolySet(ps, P);
+			if (ok) {
 				PRINTDB("New Polyhedron. Vertices: %i Facets: %i Valid: %i Norm Border valid: %i",P->size_of_vertices()%P->size_of_facets()%P->is_valid()%P->normalized_border_is_valid());
-				N = new CGAL_Nef_polyhedron3(*P);
+				N = new CGAL_Nef_polyhedron3(P);
 				PRINTDB("New CGAL Nef polyhedron: Vertices: %i Facets: %i Volumes: %i Valid: %i Simple: %i", N->number_of_vertices()%N->number_of_facets()%N->number_of_volumes()%N->is_valid()%N->is_simple() );
 			}
 		}

@@ -6,12 +6,12 @@
 #include "printutils.h"
 #include "facetess.h"
 #include "polysetq.hpp"
+using namespace OpenSCAD::facetess;
 
-class PolySet *createPolySetFromPolyhedron(const CGAL_Polyhedron &p);
-CGAL_Polyhedron *createPolyhedronFromPolySet(const class PolySet &ps);
+bool createPolySetFromPolyhedron(const CGAL_Polyhedron &p, class PolySet &ps);
+bool createPolyhedronFromPolySet(const class PolySet &ps, CGAL_Polyhedron &p);
 CGAL_Iso_cuboid_3 bounding_box( const CGAL_Nef_polyhedron3 &N );
 CGAL_Iso_rectangle_2e bounding_box( const CGAL_Nef_polyhedron2 &N );
-using namespace OpenSCAD::facetess;
 bool nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &N, CGAL_Polyhedron &P,
  tesstype facetess, tesstype faces_w_holes_tess );
 bool nef3_to_polysetq( const CGAL_Nef_polyhedron3 &N, PolySetQ &Q,

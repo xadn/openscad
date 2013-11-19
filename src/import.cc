@@ -283,7 +283,9 @@ PolySet *ImportNode::evaluate_polyset(class PolySetEvaluator *) const
 		else {
 			file >> poly;
 			file.close();
-			p = createPolySetFromPolyhedron(poly);
+			p = new PolySet;
+			bool ok = createPolySetFromPolyhedron( poly, *p );
+			if (!ok) { delete p; p = NULL; }
 		}
 #else
   PRINT("WARNING: OFF import requires CGAL.");

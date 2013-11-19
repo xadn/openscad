@@ -10,10 +10,8 @@
 
 #include <map>
 
-PolySet *createPolySetFromPolyhedron(const CGAL_Polyhedron &p)
+bool createPolySetFromPolyhedron(const CGAL_Polyhedron &p, PolySet &ps)
 {
-	PolySet *ps = new PolySet();
-
 	typedef CGAL_Polyhedron::Vertex                                 Vertex;
 	typedef CGAL_Polyhedron::Vertex_const_iterator                  VCI;
 	typedef CGAL_Polyhedron::Facet_const_iterator                   FCI;
@@ -37,16 +35,14 @@ PolySet *createPolySetFromPolyhedron(const CGAL_Polyhedron &p)
 			double x3 = CGAL::to_double(v3.point().x());
 			double y3 = CGAL::to_double(v3.point().y());
 			double z3 = CGAL::to_double(v3.point().z());
-			ps->append_poly();
-			ps->append_vertex(x1, y1, z1);
-			ps->append_vertex(x2, y2, z2);
-			ps->append_vertex(x3, y3, z3);
+			ps.append_poly();
+			ps.append_vertex(x1, y1, z1);
+			ps.append_vertex(x2, y2, z2);
+			ps.append_vertex(x3, y3, z3);
 		} while (hc != hc_end);
 	}
-	return ps;
+	return true;
 }
-
-#undef GEN_SURFACE_DEBUG
 
 class CGAL_Build_PolySet : public CGAL::Modifier_base<CGAL_HDS>
 {
@@ -118,22 +114,21 @@ public:
 	}
 };
 
-CGAL_Polyhedron *createPolyhedronFromPolySet(const PolySet &ps)
+bool createPolyhedronFromPolySet(const PolySet &ps, CGAL_Polyhedron &P)
 {
-	CGAL_Polyhedron *P = NULL;
+	bool result=true;
 	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 	try {
-		P = new CGAL_Polyhedron;
+		P.clear();
 		CGAL_Build_PolySet builder(ps);
 		P->delegate(builder);
 	}
 	catch (const CGAL::Assertion_exception &e) {
 		PRINTB("CGAL error in CGAL_Build_PolySet: %s", e.what());
-		delete P;
-		P = NULL;
+		result = false;
 	}
 	CGAL::set_error_behaviour(old_behaviour);
-	return P;
+	return result;
 }
 
 CGAL_Iso_cuboid_3 bounding_box( const CGAL_Nef_polyhedron3 &N )
