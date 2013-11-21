@@ -356,7 +356,7 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 		}
 
 		if (stl_output_file) {
-			if (root_N.dim != 3) {
+			if (root_N.getDimension() != 3) {
 				PRINT("Current top level object is not a 3D object.\n");
 				return 1;
 			}
@@ -375,7 +375,7 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 		}
 
 		if (off_output_file) {
-			if (root_N.dim != 3) {
+			if (root_N.getDimension() != 3) {
 				PRINT("Current top level object is not a 3D object.\n");
 				return 1;
 			}
@@ -394,7 +394,7 @@ int cmdline(const char *deps_output_file, const std::string &filename, Camera &c
 		}
 
 		if (dxf_output_file) {
-			if (root_N.dim != 2) {
+			if (root_N.getDimension() != 2) {
 				PRINT("Current top level object is not a 2D object.\n");
 				return 1;
 			}
