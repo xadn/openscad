@@ -89,6 +89,7 @@ private:
 	void loadDesignSettings();
 
   class QMessageBox *openglbox;
+  class FontListDialog *font_list_dialog;
 
 private slots:
 	void actionUpdateCheck();
@@ -174,6 +175,7 @@ public slots:
 	void helpHomepage();
 	void helpManual();
 	void helpLibrary();
+	void helpFontInfo();
 	void quit();
 	void checkAutoReload();
 	void waitAfterReload();

@@ -39,6 +39,7 @@
 #include "progress.h"
 #include "dxfdim.h"
 #include "AboutDialog.h"
+#include "FontListDialog.h"
 #ifdef ENABLE_OPENCSG
 #include "CSGTermEvaluator.h"
 #include "OpenCSGRenderer.h"
@@ -343,6 +344,7 @@ MainWindow::MainWindow(const QString &filename)
 	connect(this->helpActionHomepage, SIGNAL(triggered()), this, SLOT(helpHomepage()));
 	connect(this->helpActionManual, SIGNAL(triggered()), this, SLOT(helpManual()));
 	connect(this->helpActionLibraryInfo, SIGNAL(triggered()), this, SLOT(helpLibrary()));
+	connect(this->helpActionFontInfo, SIGNAL(triggered()), this, SLOT(helpFontInfo()));
 
 
 	setCurrentOutput();
@@ -1833,6 +1835,16 @@ void MainWindow::helpLibrary()
 	}
 	this->openglbox->setDetailedText( info );
 	this->openglbox->show();
+}
+
+void MainWindow::helpFontInfo()
+{
+	if (!this->font_list_dialog) {
+		FontListDialog *dialog = new FontListDialog();
+		this->font_list_dialog = dialog;
+	}
+	this->font_list_dialog->update_font_list();
+	this->font_list_dialog->show();
 }
 
 /*!
