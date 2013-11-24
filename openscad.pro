@@ -197,6 +197,7 @@ HEADERS += src/typedefs.h \
            src/ThrownTogetherRenderer.h \
            src/CGAL_renderer.h \
            src/OGL_helper.h \
+	   src/nef_helper.h \
            src/QGLView.h \
            src/GLView.h \
            src/MainWindow.h \

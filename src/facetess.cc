@@ -57,6 +57,7 @@ needed to do tessellation.
 
 #include "facetess.h"
 #include "printutils.h"
+#include "cgalutils.h"
 using namespace OpenSCAD::facetess;
 
 #include <CGAL/Constrained_Delaunay_triangulation_2.h>
@@ -504,13 +505,6 @@ tessellater_status remove_top_hole( TessKernel_Face_2 &input )
 	input[0] = newbody;
 	PRINTD("Removed hole");
 	PRINTDB("New Face body. simple: %i #pts: %i",input[0].is_simple()%input[0].size());
-		/*std::stringstream s; s<<"posthole=[";
-		for (size_t j=0;j<input[0].size();j++) {
-			double x = CGAL::to_double(input[0][j].x());
-			double y = CGAL::to_double(input[0][j].y());
-			s << " [ " << x << "," << y << "],";
-		} s<<"]";
-		PRINTDB("%s",s.str());*/
 	for (size_t i=0;i<input[0].size();i++) {
 		PRINTDB(" pt %i: %s",i%input[0][i]);
 	}
@@ -664,67 +658,6 @@ the problem.
 
 */
 
-bool check_intersect( TessKernel_Segment_2 &s1, TessKernel_Segment_2 &s2 )
-{
-	TessKernel_Point_2 s1p0 = s1.point(0);
-	TessKernel_Point_2 s1p1 = s1.point(1);
-	TessKernel_Point_2 s2p0 = s2.point(0);
-	TessKernel_Point_2 s2p1 = s2.point(1);
-	std::stringstream s;
-	s << s1p0;
-	std::string cs1p0 = s.str();
-	s.str("");
-	s << s1p1;
-	std::string cs1p1 = s.str();
-	s.str("");
-	s << s2p0;
-	std::string cs2p0 = s.str();
-	s.str("");
-	s << s2p1;
-	std::string cs2p1 = s.str();
-	bool cs1 = (cs1p0==cs1p1);
-	bool cs2 = (cs2p0==cs2p1);
-	//PRINTDB("check intersect. s1[%s,%s] s2[%s,%s]", s1p0%s1p1%s2p0%s2p1);
-	//PRINTDB("s1 str comp %s %s ",cs1%cs2);
-	if (cs1) return true;
-	if (cs2) return true;
-	if (CGAL::do_intersect( s1, s2 )) {
-		PRINTDB("intersection detected. s1[%s,%s] s2[%s,%s]", s1p0%s1p1%s2p0%s2p1);
-		if (cs1p0==cs2p0||cs1p1==cs2p0||cs1p0==cs2p1||cs1p1==cs2p1) {
-			if ( (cs1p0==cs2p0&&cs1p1==cs2p1) || (cs1p0==cs2p1&&cs1p1==cs2p0) )
-			//if ( (s1p0==s2p0&&s1p1==s2p1) || (s1p0==s2p1&&s1p1==s2p0) )
-				return true;
-			else
-				return false;
-		}
-		return true;
-	}
-	return false;
-}
-
-// CGAL's is_simple() is buggy. this is very slow but it actually works.
-bool simple_check( TessKernel_Polygon_2 &pgon )
-{
-	if (pgon.size()<3) return false;
-	std::vector<TessKernel_Segment_2> segs;
-	for ( size_t i=0;i<pgon.size();i++ ) {
-		TessKernel_Point_2 p1 = pgon[i];
-		TessKernel_Point_2 p2 = pgon[(i+1)%pgon.size()];
-		TessKernel_Segment_2 s = TessKernel_Segment_2( p1, p2 );
-		segs.push_back( s );
-	}
-	for ( size_t i=0;i<segs.size();i++ ) {
-		TessKernel_Segment_2 s1 = segs[i];
-		for ( size_t j=i+2;j<segs.size();j++ ) {
-			TessKernel_Segment_2 s2 = segs[j%segs.size()];
-			if ( j!=((j+1)%segs.size()) && check_intersect( s1, s2 ) ) {
-				return false;
-			}
-		}
-	}
-	return true;
-}
-
 tessellater_status project_3d_to_2d(
 	TessKernel_Face_3 &input, TessKernel_Face_2 &output,
 	std::map<TessKernel_Point_2,TessKernel_Point_3> &vertmap,
@@ -775,7 +708,7 @@ tessellater_status project_3d_to_2d(
 				tmp2d = TessKernel_Point_2( x, z );
 			else if ( projection == YZ_PROJECTION )
 				tmp2d = TessKernel_Point_2( y, z );
-			PRINTDB( "pgon %i pt %i: %s --> %s", i%j%tmp3d % tmp2d );
+			PRINTDB( "pgon %i pt %i: %s :3d-->2d: %s", i%j%tmp3d % tmp2d );
 			vertmap[ tmp2d ] = tmp3d;
 			tmppoly2d.push_back( tmp2d );
 		}
@@ -788,11 +721,15 @@ template <typename SomePoint_2,typename SomePolygon_2>
 tessellater_status quality_check( std::vector<SomePolygon_2> &pgons )
 {
 	PRINTD( "quality check");
-	if (!pgons[0].is_simple()) return BODY_NOT_SIMPLE;
+	//SomePolygon_2 pts = self_intersections<SomePolygon_2>( pgons );
+	PRINTD("self intersections... (by segment)");
+	//for (size_t i=0;i<segs.size();i++) PRINTDB("%s",segs[i]);
+
 	//if (!simple_check(pgons[0])) return BODY_NOT_SIMPLE;
 	PRINTDB( "body pgon. points: %i", pgons[0].size() );
 	PRINTDB( "body is convex: %i", pgons[0].is_convex() );
 	PRINTDB( "body is simple: %i", pgons[0].is_simple() );
+	if (!pgons[0].is_simple()) return BODY_NOT_SIMPLE;
 	int numholes = pgons.size()-1;
 	PRINTDB( "holes: %i", numholes );
 	for (size_t i=1;i<pgons.size();i++) {
@@ -870,7 +807,7 @@ tessellater_status cdt_tess( TessKernel_Face_2 &tk_input2dface,
  	convert_kernel( tk_input2dface, cdtface, vertmap_k );
 	tessellater_status status = quality_check<CDTKernel_Point_2,CDTKernel_Polygon_2>( cdtface );
 	if (status!=TESSELLATER_OK) {
-		PRINTD("Tessellater - CDT Quality check failed");
+		PRINTDB("Tessellater - CDT Quality check failed. status: %i",status);
 		return status;
 	}
 	fix_orientation<CDTKernel_Polygon_2>( cdtface, original_body_orientation );
@@ -887,14 +824,48 @@ tessellater_status cdt_tess( TessKernel_Face_2 &tk_input2dface,
 	return status;
 }
 
+void attempt_quality_fix(TessKernel_Face_2 &face)
+{
+	PRINTD("attempt quality fix");
+	for(size_t i=0;i<face.size();i++) {
+		TessKernel_Polygon_2 &pgon = face[i];
+		size_t size_before=-1;
+		while(size_before!=pgon.size()) {
+			PRINTDB("Remove adjacent samepoints. before %i",pgon.size());
+			size_before = pgon.size();
+			remove_adjacent_samepoint( pgon );
+			PRINTDB("after: %i",pgon.size());
+		}
+	}
+	int numholes = face.size()-1;
+	PRINTDB("removing holes that are actually lines. holes before: %i",numholes);
+	std::map<size_t,int> torm;
+	for(size_t i=1;i<face.size();i++) {
+		TessKernel_Polygon_2 pgon = face[i];
+		if (pgon.orientation()==CGAL::COLLINEAR) {
+			torm[i]=1;
+		}
+	}
+	TessKernel_Face_2::iterator vi = face.begin();
+	for(size_t i=1;i<face.size();i++) {
+		vi++;
+		if (torm.count(i)) face.erase(vi);
+	}
+	numholes = face.size()-1;
+	PRINTDB("holes after: %i",numholes);
+}
+
 tessellater_status earclip_tess( TessKernel_Face_2 &tk_input2dface,
 	std::vector<TessKernel_Polygon_2> &tk_output_pgons2d,
 	CGAL::Orientation &original_body_orientation )
 {
 	tessellater_status status = quality_check<TessKernel_Point_2,TessKernel_Polygon_2>( tk_input2dface );
 	if (status!=TESSELLATER_OK) {
-		PRINTD("Tessellater - TK Quality check failed");
-		return status;
+		attempt_quality_fix( tk_input2dface );
+		if (status!=TESSELLATER_OK) {
+			PRINTDB("Tessellater - TessKernal 2d pgon Quality check failed. status: %i",status);
+			return status;
+		}
 	}
 	fix_orientation<TessKernel_Polygon_2>( tk_input2dface, original_body_orientation );
 	triangulate_earclip( tk_input2dface, tk_output_pgons2d );

@@ -164,7 +164,8 @@ CGAL_Nef_polyhedron CGALEvaluator::applyHull(const CgaladvNode &node)
 				PRINT("Hull() currently requires a valid 2-manifold. Please modify your design. See http://en.wikibooks.org/wiki/OpenSCAD_User_Manual/STL_Import_and_Export");
 			}
 			else {
-				chN.p3->convert_to_Polyhedron(P);
+				CGAL::nefhelper_convert_to_polyhedron<CGAL_Polyhedron, CGAL_Kernel3, CGAL_Nef_polyhedron3>( *(chN.p3), P );
+				//chN.p3->convert_to_Polyhedron(P);
 				std::transform(P.vertices_begin(), P.vertices_end(), std::back_inserter(points3d), 
 											 boost::bind(static_cast<const CGAL_Polyhedron::Vertex::Point_3&(CGAL_Polyhedron::Vertex::*)() const>(&CGAL_Polyhedron::Vertex::point), _1));
 			}
@@ -822,9 +823,9 @@ CGAL_Nef_polyhedron CGALEvaluator::evaluateCGALMesh(const PolySet &ps)
 		CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
 		try {
 			CGAL_Polyhedron P;
-			book ok = createPolyhedronFromPolySet(ps, P);
+			bool ok = createPolyhedronFromPolySet(ps, P);
 			if (ok) {
-				PRINTDB("New Polyhedron. Vertices: %i Facets: %i Valid: %i Norm Border valid: %i",P->size_of_vertices()%P->size_of_facets()%P->is_valid()%P->normalized_border_is_valid());
+				PRINTDB("New Polyhedron. Vertices: %i Facets: %i Valid: %i Norm Border valid: %i",P.size_of_vertices()%P.size_of_facets()%P.is_valid()%P.normalized_border_is_valid());
 				N = new CGAL_Nef_polyhedron3(P);
 				PRINTDB("New CGAL Nef polyhedron: Vertices: %i Facets: %i Volumes: %i Valid: %i Simple: %i", N->number_of_vertices()%N->number_of_facets()%N->number_of_volumes()%N->is_valid()%N->is_simple() );
 			}

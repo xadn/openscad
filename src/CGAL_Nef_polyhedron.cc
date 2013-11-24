@@ -86,9 +86,8 @@ PolySet *CGAL_Nef_polyhedron::convertToPolyset()
 {
 	PRINTD("Nef Poly3: convert to polyset.");
 	if (this->isNull()) return new PolySet();
-	PolySet *ps = NULL;
+	PolySet *ps = new PolySet();
 	if (this->dim == 2) {
-		ps = new PolySet();
 		DxfData *dd = this->convertToDxfData();
 		ps->is2d = true;
 		dxf_tesselate(ps, *dd, 0, Vector2d(1,1), true, false, 0);
@@ -97,19 +96,24 @@ PolySet *CGAL_Nef_polyhedron::convertToPolyset()
 	}
 	else if (this->dim == 3) {
 		CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
+		CGAL_Polyhedron P;
 		try {
-			CGAL_Polyhedron P;
-			this->p3->convert_to_Polyhedron(P);
-			ps = createPolySetFromPolyhedron(P);
-		}
-		catch (const CGAL::Assertion_exception &e) {
-			PRINTB("CGAL error in CGAL_Nef_polyhedron::convertToPolyset(): %s", e.what());
+			//nef3_to_polyhedron( *(this->p3), P, OpenSCAD::facetess::EARCLIP, OpenSCAD::facetess::EARCLIP );
+			PRINTDB("Nef: Valid: %i Simple: %i",this->p3->is_valid()%this->p3->is_simple());
+			bool err = CGAL::nefhelper_convert_to_polyhedron<CGAL_Polyhedron,CGAL_Kernel3,CGAL_Nef_polyhedron3>( *(this->p3), P );
+			PRINTDB("Nef->Polyhedron Conversion. Vertices: %i Faces: %i",P.size_of_vertices()%P.size_of_facets());
+			if (err) PRINT("WARNING: Nef->Polyhedron error. Mesh corrupted");
+			bool ok = createPolySetFromPolyhedron(P, *ps);
+			if (!ok) { delete ps; ps=NULL; }
 		}
 		catch (const CGAL::Precondition_exception &e) {
-			PRINTB("CGAL error in CGAL_Nef_polyhedron::convertToPolyset(): %s", e.what());
+			PRINTB("CGAL Precondition error in CGAL_Nef_polyhedron::convertToPolyset(): %s", e.what());
 		}
-		catch (const std::exception &e) {
-			PRINTB("Exception: %s", e.what());
+		catch (const CGAL::Assertion_exception *e) {
+			PRINTB("CGAL Assertion error in CGAL_Nef_polyhedron::convertToPolyset(): %s", e->what());
+		}
+		catch (...) {
+			PRINT("Unknown CGAL error converting Nef to Polyset.");
 		}
 		CGAL::set_error_behaviour(old_behaviour);
 	}

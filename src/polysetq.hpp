@@ -5,17 +5,53 @@
 #include "cgal.h"
 #include "linalg.h"
 
-/* Auxiliary polyset for dealing with CGAL data structures.
- The vertexes are in a list. A Polygon is a sequence of indexes into that
- list. A 'volume' is a set of indexes into the polygon list.
+/* PolySetQ is an auxiliary to PolySet for dealing with CGAL data
+structures, especially during import/export. It is a bit similar to
+PolySet, but it does not form the backbone of OpenSCAD like PolySet does.
 
- Example: a pyramid
+Veretxes are x,y,z coordinates in space. A polygon is a sequence of vertexes.
+A volume is a sequence of Polygons.
+
+Polygons dont store vertexes, but instead indexes to the Vertex list.
+Volumes dont store polygons, but instead indexes to the Polygon list.
+
+Polygons are assumed to be 'flat' aka 'planar' and without holes.
+Volumes are assumed to represent collections of polygons that form
+valid, closed 3d shape such that every 'inside' the shape is separated
+from 'empty space' by a polygon. This is also called a '2-manifold' or
+'Polyhedron'. Volumes are assumed not to intersect. Polygons are assumed
+to be 'counterclockwise' in point order, if viewed from outside the
+shape.
+
+Problems like self intersections, invalid shapes, badly oriented
+polygons, etc, are the responsibility of the caller.
+
+Example: a triangular thingy
+ Code:
+ PolySetQ q;
+ q.append_volume();
+ q.append_polygon();
+ q.append_vertex(Point(0,0,0));
+ q.append_vertex(Point(1,0,0));
+ q.append_vertex(Point(0,1,0));
+ q.append_polygon();
+ q.append_vertex(Point(0,0,0));
+ q.append_vertex(Point(1,0,0));
+ q.append_vertex(Point(0,0,1));
+ q.append_polygon();
+ q.append_vertex(Point(1,0,0));
+ q.append_vertex(Point(0,1,0));
+ q.append_vertex(Point(0,0,1));
+ q.append_polygon();
+ q.append_vertex(Point(0,1,0));
+ q.append_vertex(Point(0,0,0));
+ q.append_vertex(Point(0,0,1));
+
+ Resulting data structure:
  Vertex list: [0,0,0][1,0,0][0,1,0][0,0,1] (4 items, each with x,y,z coordinate)
- Polygon list: [0,1,2][0,1,3][1,2,3][2,0,3] (4 items, each a list of points)
- Volume list: [0,1,2,3] (1 item, a list of polygons)
+ Polygon list: [0,1,2][0,1,3][1,2,3][2,0,3] (4 items, each a list of point indexes)
+ Volume list: [0,1,2,3] (1 item, a list of polygon indexes)
 
- Issues undealt with: invalid shapes, self intersections, normals, etc. Those
- are the responsibility of the caller.
 */
 class VolumeQ : public std::vector<size_t>
 {

@@ -64,5 +64,18 @@ public:
 	void visit( CGAL_Nef_polyhedron3::Halffacet_const_handle hfacet );
 };
 
+// can print pgon picture with dbgdraw.py
+template <typename SomePolygon>
+void debugdraw( SomePolygon &pgon )
+{
+        std::stringstream s; s<<"pdata=[";
+        for (size_t j=0;j<pgon.size();j++) {
+                double x = CGAL::to_double(pgon[j].x());
+                double y = CGAL::to_double(pgon[j].y());
+                double z = CGAL::to_double(pgon[j].z());
+                s << " [ " << x << "," << y << "," << z << "],";
+        } s << "]";
+        if (OpenSCAD::debug != "0") PRINTB("%s",s.str());
+}
 
 #endif

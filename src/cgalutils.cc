@@ -121,7 +121,7 @@ bool createPolyhedronFromPolySet(const PolySet &ps, CGAL_Polyhedron &P)
 	try {
 		P.clear();
 		CGAL_Build_PolySet builder(ps);
-		P->delegate(builder);
+		P.delegate(builder);
 	}
 	catch (const CGAL::Assertion_exception &e) {
 		PRINTB("CGAL error in CGAL_Build_PolySet: %s", e.what());
@@ -294,7 +294,8 @@ bool nef3_to_polysetq( const CGAL_Nef_polyhedron3 &N, PolySetQ &Q,
 			status = OpenSCAD::facetess::tessellate( contours, pgons_from_tesser, faces_tess );
 		else
 			status = OpenSCAD::facetess::tessellate( contours, pgons_from_tesser, faces_w_holes_tess );
-		if (status!=OpenSCAD::facetess::TESSELLATER_OK) PRINTD("ERROR: tess status not OK");
+		if (status!=OpenSCAD::facetess::TESSELLATER_OK)
+			PRINTD("ERROR: tess status not OK");
 		PRINTDB("pgon contours output: %i", pgons_from_tesser.size());
 		for (size_t i=0;i<pgons_from_tesser.size();i++) {
 			CGAL_Polygon_3 pgon = pgons_from_tesser[i];
@@ -343,10 +344,14 @@ void TessBuilder::operator()(CGAL_HDS& hds)
 		if (errstat && !error_tripped) {
 			error_tripped = true;
 			PRINTB("ERROR: TessBuilder error while adding facet %i. Points:",i);
-//			for (size_t j=0;j<pgon.size();j++) {
-//				CGAL_HDS::Vertex::Point p = pgon[j];
-//				PRINTB("ERROR: pt index: %i data: %s", %p );
-//			}
+			std::vector<CGAL_HDS::Vertex::Point> dbgpgon;
+			for (size_t j=0;j<pgon.size();j++) {
+				size_t vindex = pgon[j];
+				CGAL_HDS::Vertex::Point p = pset.vertlist[vindex];
+				PRINTB("ERROR: pt index: %i data: %s", j%p );
+				dbgpgon.push_back(p);
+			}
+			debugdraw(dbgpgon);
 		}
 	}
 	B.end_surface();
@@ -364,7 +369,8 @@ bool nef3_to_polyhedron( const CGAL_Nef_polyhedron3 &N, CGAL_Polyhedron &P,
 	OpenSCAD::facetess::tesstype faces_tess, OpenSCAD::facetess::tesstype faces_with_holes_tess )
 {
 	if (faces_tess == OpenSCAD::facetess::CGAL_NEF_STANDARD && faces_with_holes_tess == OpenSCAD::facetess::CGAL_NEF_STANDARD ) {
-  		N.convert_to_Polyhedron( P );
+		CGAL::nefhelper_convert_to_polyhedron<CGAL_Polyhedron, CGAL_Kernel3, CGAL_Nef_polyhedron3>( N, P );
+  		//N.convert_to_Polyhedron( P );
 	}
 	else {
 		PolySetQ Q;
