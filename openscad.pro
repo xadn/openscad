@@ -251,7 +251,6 @@ HEADERS += src/typedefs.h \
            src/nodedumper.h \
            src/ModuleCache.h \
            src/GeometryCache.h \
-           src/PolySetEvaluator.h \
            src/GeometryEvaluator.h \
            src/CSGTermEvaluator.h \
            src/Tree.h \
@@ -319,7 +318,6 @@ SOURCES += src/version_check.cc \
            \
            src/nodedumper.cc \
            src/traverser.cc \
-           src/PolySetEvaluator.cc \
            src/GeometryEvaluator.cc \
            src/ModuleCache.cc \
            src/GeometryCache.cc \
@@ -382,7 +380,6 @@ HEADERS += src/cgal.h \
            src/cgalutils.h \
            src/CGALEvaluator.h \
            src/CGALCache.h \
-           src/PolySetCGALEvaluator.h \
            src/CGALRenderer.h \
            src/CGAL_Nef_polyhedron.h \
            src/CGAL_Nef3_workaround.h \
@@ -391,7 +388,6 @@ HEADERS += src/cgal.h \
 
 SOURCES += src/cgalutils.cc \
            src/CGALEvaluator.cc \
-           src/PolySetCGALEvaluator.cc \
            src/CGALCache.cc \
            src/CGALRenderer.cc \
            src/CGAL_Nef_polyhedron.cc \
