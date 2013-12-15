@@ -35,6 +35,7 @@
 #include "printutils.h"
 #include "visitor.h"
 #include "context.h"
+#include "grid.h"
 #include <sstream>
 #include <assert.h>
 #include <boost/foreach.hpp>
