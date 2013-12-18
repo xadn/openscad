@@ -52,9 +52,11 @@ std::string PolySet::dump() const
 {
 	std::stringstream out;
 	out << "PolySet:"
+	  << "\n memory size:" << this->memsize()
 	  << "\n dimensions:" << std::string( this->is2d ? "2" : "3" )
 	  << "\n convexity:" << this->convexity
 	  << "\n num polygons: " << polygons.size()
+	  << "\n num volumes: " << volumes.size()
 	  << "\n num borders: " << borders.size()
 	  << "\n polygons data:";
 	for (size_t i = 0; i < polygons.size(); i++) {
@@ -63,6 +65,12 @@ std::string PolySet::dump() const
 		for (size_t j = 0; j < poly->size(); j++) {
 			Vector3d v = poly->at(j);
 			out << "\n   vertex:" << v.transpose();
+		}
+	}
+	for (size_t i = 0; i < volumes.size(); i++) {
+		out << "\n  volumes begin:";
+		for (size_t j = 0; j < volumes[i].size(); j++) {
+			out << "\n   polygon index:" << volumes[i][j];
 		}
 	}
 	out << "\n borders data:";
@@ -78,9 +86,15 @@ std::string PolySet::dump() const
 	return out.str();
 }
 
+void PolySet::append_volume()
+{
+	volumes.push_back(Volume());
+}
+
 void PolySet::append_poly()
 {
 	polygons.push_back(Polygon());
+	volumes.back().push_back(polygons.size());
 }
 
 void PolySet::append_vertex(double x, double y, double z)
@@ -303,6 +317,7 @@ BoundingBox PolySet::getBoundingBox() const
 size_t PolySet::memsize() const
 {
 	size_t mem = 0;
+	BOOST_FOREACH(const Volume &v, this->volumes) mem += p.size() * sizeof(size_t);
 	BOOST_FOREACH(const Polygon &p, this->polygons) mem += p.size() * sizeof(Vector3d);
 	BOOST_FOREACH(const Polygon &p, this->borders) mem += p.size() * sizeof(Vector3d);
 	mem += this->grid.db.size() * (3 * sizeof(int64_t) + sizeof(void*)) + sizeof(Grid3d<void*>);

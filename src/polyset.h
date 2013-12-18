@@ -11,10 +11,12 @@ class PolySet
 {
 public:
 	typedef std::vector<Vector3d> Polygon;
+	typedef std::vector<size_t> Volume; // indexes to polygons
 	std::vector<Polygon> polygons;
 	std::vector<Polygon> borders;
-	Grid3d<void*> grid;
+	std::vector<Volume> volumes;
 
+	Grid3d<void*> grid;
 	bool is2d;
 	int convexity;
 
@@ -22,6 +24,7 @@ public:
 	~PolySet();
 
 	bool empty() const { return polygons.size() == 0; }
+	void append_volume();
 	void append_poly();
 	void append_vertex(double x, double y, double z = 0.0);
 	void insert_vertex(double x, double y, double z = 0.0);

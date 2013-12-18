@@ -10,6 +10,26 @@
 
 bool createPolySetFromNefPolyhedron3(const CGAL_Nef_polyhedron3 &N, PolySet &ps)
 {
+        CGAL_Nef_polyhedron3::Halffacet_const_iterator hfaceti;
+        CGAL_forall_halffacets( hfaceti, N ) {
+		// the 0-mark-volume is the 'empty' volume of space. skip it.
+                if (hfaceti->incident_volume()->mark() == 0) continue;
+                CGAL_Nef_polyhedron3::Halffacet_cycle_const_iterator cyclei;
+		std::vector<CGAL_Polygon_3> contours;
+                CGAL_forall_facet_cycles_of( cyclei, hfaceti ) {
+			CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c1(cyclei);
+			CGAL_Nef_polyhedron3::SHalfedge_around_facet_const_circulator c2(c1);
+			CGAL_Polygon_3 contour;
+			CGAL_For_all( c1, c2 ) {
+			        contour.push_back(c1->source()->center_vertex()->point());
+			}
+			contours.push_back( contour );
+		}
+		// at this stage, we have a sequence of contours. the first
+		// is the "outside edge' or 'body', and the rest of the
+		// contours are 'holes' within the first.
+		
+	}
 }
 
 bool createPolySetFromPolyhedron(const CGAL_Polyhedron &p, PolySet &ps)
