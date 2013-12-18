@@ -3,6 +3,7 @@
 
 #include <cgal.h>
 #include "polyset.h"
+bool createPolySetFromNefPolyhedron3(const CGAL_Nef_polyhedron3 &N, PolySet &ps);
 bool createPolySetFromPolyhedron(const CGAL_Polyhedron &p, PolySet &ps);
 bool createPolyhedronFromPolySet(const PolySet &ps, CGAL_Polyhedron &p);
 CGAL_Iso_cuboid_3 bounding_box( const CGAL_Nef_polyhedron3 &N );

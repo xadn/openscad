@@ -8,6 +8,10 @@
 
 #include <map>
 
+bool createPolySetFromNefPolyhedron3(const CGAL_Nef_polyhedron3 &N, PolySet &ps)
+{
+}
+
 bool createPolySetFromPolyhedron(const CGAL_Polyhedron &p, PolySet &ps)
 {
 	bool err = false;
