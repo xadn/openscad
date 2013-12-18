@@ -42,6 +42,7 @@
 
 PolySet::PolySet() : grid(GRID_FINE), is2d(false), convexity(1)
 {
+	this->append_volume();
 }
 
 PolySet::~PolySet()
@@ -317,7 +318,7 @@ BoundingBox PolySet::getBoundingBox() const
 size_t PolySet::memsize() const
 {
 	size_t mem = 0;
-	BOOST_FOREACH(const Volume &v, this->volumes) mem += p.size() * sizeof(size_t);
+	BOOST_FOREACH(const Volume &v, this->volumes) mem += v.size() * sizeof(size_t);
 	BOOST_FOREACH(const Polygon &p, this->polygons) mem += p.size() * sizeof(Vector3d);
 	BOOST_FOREACH(const Polygon &p, this->borders) mem += p.size() * sizeof(Vector3d);
 	mem += this->grid.db.size() * (3 * sizeof(int64_t) + sizeof(void*)) + sizeof(Grid3d<void*>);

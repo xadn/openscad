@@ -10,7 +10,7 @@
 
 bool createPolySetFromNefPolyhedron3(const CGAL_Nef_polyhedron3 &N, PolySet &ps)
 {
-        CGAL_Nef_polyhedron3::Halffacet_const_iterator hfaceti;
+/*        CGAL_Nef_polyhedron3::Halffacet_const_iterator hfaceti;
         CGAL_forall_halffacets( hfaceti, N ) {
 		// the 0-mark-volume is the 'empty' volume of space. skip it.
                 if (hfaceti->incident_volume()->mark() == 0) continue;
@@ -29,7 +29,7 @@ bool createPolySetFromNefPolyhedron3(const CGAL_Nef_polyhedron3 &N, PolySet &ps)
 		// is the "outside edge' or 'body', and the rest of the
 		// contours are 'holes' within the first.
 		
-	}
+	}*/
 }
 
 bool createPolySetFromPolyhedron(const CGAL_Polyhedron &p, PolySet &ps)
