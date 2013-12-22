@@ -31,7 +31,6 @@
 #include "printutils.h"
 #include "fileutils.h"
 #include "builtin.h"
-#include "PolySetEvaluator.h"
 #include "polyset.h"
 #include "openscad.h" // get_fragments_from_r()
 #include "mathc99.h" 
@@ -126,22 +125,6 @@ AbstractNode *LinearExtrudeModule::instantiate(const Context *ctx, const ModuleI
 	}
 
 	return node;
-}
-
-class Geometry *LinearExtrudeNode::evaluate_geometry(PolySetEvaluator *evaluator) const
-{
-	if (!evaluator) {
-		PRINTB("WARNING: No suitable PolySetEvaluator found for %s module!", this->name());
-		return NULL;
-	}
-
-	print_messages_push();
-
-	Geometry *ps = evaluator->evaluateGeometry(*this);
-
-	print_messages_pop();
-
-	return ps;
 }
 
 std::string LinearExtrudeNode::toString() const
