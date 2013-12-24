@@ -417,6 +417,16 @@ find_package(GLIB2 2.2.0 REQUIRED)
 add_definitions(${GLIB2_DEFINITIONS})
 inclusion(GLIB2_DIR GLIB2_INCLUDE_DIRS)
 
+# find libraries using pkg-config
+
+find_package(PkgConfig REQUIRED)
+pkg_search_module(FONTCONFIG REQUIRED fontconfig)
+message(STATUS "fontconfig found: ${FONTCONFIG_VERSION}")
+pkg_search_module(FREETYPE REQUIRED freetype2)
+message(STATUS "freetype2 found: ${FREETYPE_VERSION}")
+pkg_search_module(HARFBUZZ REQUIRED harfbuzz)
+message(STATUS "harfbuzz found: ${HARFBUZZ_VERSION}")
+
 # Imagemagick
 
 if (SKIP_IMAGEMAGICK)
