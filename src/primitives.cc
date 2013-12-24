@@ -33,7 +33,7 @@
 #include "printutils.h"
 #include "visitor.h"
 #include "context.h"
-#include "FreetypeRenderer.h"
+#include "calc.h"
 #include <sstream>
 #include <assert.h>
 #include <boost/foreach.hpp>
@@ -49,20 +49,8 @@ enum primitive_type_e {
 	POLYHEDRON,
 	SQUARE,
 	CIRCLE,
-	POLYGON,
-	TEXT
+	POLYGON
 };
-
-/*!
-	Returns the number of subdivision of a whole circle, given radius and
-	the three special variables $fn, $fs and $fa
-*/
-int get_fragments_from_r(double r, double fn, double fs, double fa)
-{
-	if (r < GRID_FINE) return 3;
-	if (fn > 0.0) return (int)(fn >= 3 ? fn : 3);
-	return (int)ceil(fmax(fmin(360.0 / fa, r*2*M_PI / fs), 5));
-}
 
 class PrimitiveModule : public AbstractModule
 {
@@ -72,8 +60,6 @@ public:
 	virtual AbstractNode *instantiate(const Context *ctx, const ModuleInstantiation *inst, const EvalContext *evalctx) const;
 private:
 	Value lookup_radius(const Context &ctx, const std::string &radius_var, const std::string &diameter_var) const;
-	double lookup_double_variable_with_default(Context &c, std::string variable, double def) const;
-	std::string lookup_string_variable_with_default(Context &c, std::string variable, std::string def) const;
 };
 
 class PrimitiveNode : public LeafNode
@@ -106,9 +92,6 @@ public:
 			break;
 		case POLYGON:
 			return "polygon";
-			break;
-		case TEXT:
-			return "text";
 			break;
 		default:
 			assert(false && "PrimitiveNode::name(): Unknown primitive type");
@@ -188,9 +171,6 @@ AbstractNode *PrimitiveModule::instantiate(const Context *ctx, const ModuleInsta
 		break;
 	case POLYGON:
 		args += Assignment("points", NULL), Assignment("paths", NULL), Assignment("convexity", NULL);
-		break;
-	case TEXT:
-		args += Assignment("t", NULL);
 		break;
 	default:
 		assert(false && "PrimitiveModule::instantiate(): Unknown node type");
@@ -294,43 +274,11 @@ AbstractNode *PrimitiveModule::instantiate(const Context *ctx, const ModuleInsta
 	}
 	}
 	
-	if (type == TEXT) {
-		double size = lookup_double_variable_with_default(c, "size", 10.0);
-		int segments = get_fragments_from_r(size, node->fn, node->fs, node->fa);
-		// The curved segments of most fonts are relatively short, so
-		// by using a fraction of the number of full circle segments
-		// the resolution will be better matching the detail level of
-		// other objects.
-		int text_segments = std::max(((int)floor(segments / 6)) + 2, 2);
-		node->params.set_size(size);
-		node->params.set_fn(text_segments);
-		node->params.set_text(lookup_string_variable_with_default(c, "t", ""));
-		node->params.set_spacing(lookup_double_variable_with_default(c, "spacing", 1.0));
-		node->params.set_font(lookup_string_variable_with_default(c, "font", ""));
-		node->params.set_direction(lookup_string_variable_with_default(c, "direction", "ltr"));
-		node->params.set_language(lookup_string_variable_with_default(c, "language", "en"));
-		node->params.set_script(lookup_string_variable_with_default(c, "script", "latin"));
-		node->params.set_halign(lookup_string_variable_with_default(c, "halign", "left"));
-		node->params.set_valign(lookup_string_variable_with_default(c, "valign", "baseline"));
-	}
-
 	node->convexity = c.lookup_variable("convexity", true).toDouble();
 	if (node->convexity < 1)
 		node->convexity = 1;
 
 	return node;
-}
-
-double PrimitiveModule::lookup_double_variable_with_default(Context &c, std::string variable, double def) const
-{
-	const Value v = c.lookup_variable(variable, true);
-	return (v.type() == Value::NUMBER) ? v.toDouble() : def;
-}
-
-std::string PrimitiveModule::lookup_string_variable_with_default(Context &c, std::string variable, std::string def) const
-{
-	const Value v = c.lookup_variable(variable, true);
-	return (v.type() == Value::STRING) ? v.toString() : def;
 }
 
 struct point2d {
@@ -419,7 +367,7 @@ Geometry *PrimitiveNode::createGeometry() const
 			double z;
 		};
 
-		int fragments = get_fragments_from_r(r1, fn, fs, fa);
+		int fragments = Calc::get_fragments_from_r(r1, fn, fs, fa);
 		int rings = (fragments+1)/2;
 // Uncomment the following three lines to enable experimental sphere tesselation
 //		if (rings % 2 == 0) rings++; // To ensure that the middle ring is at phi == 0 degrees
@@ -484,7 +432,7 @@ sphere_next_r2:
 	{
 		PolySet *p = new PolySet();
 		g = p;
-		int fragments = get_fragments_from_r(fmax(this->r1, this->r2), this->fn, this->fs, this->fa);
+		int fragments = Calc::get_fragments_from_r(fmax(this->r1, this->r2), this->fn, this->fs, this->fa);
 
 		double z1, z2;
 		if (this->center) {
@@ -583,8 +531,7 @@ sphere_next_r2:
 	{
 		Polygon2d *p = new Polygon2d();
 		g = p;
-
-		int fragments = get_fragments_from_r(this->r1, this->fn, this->fs, this->fa);
+		int fragments = Calc::get_fragments_from_r(this->r1, this->fn, this->fs, this->fa);
 
 		Outline2d o(fragments);
 		for (int i=0; i < fragments; i++) {
@@ -638,15 +585,6 @@ sphere_next_r2:
             p->setConvexity(convexity);
         }
 	}
-	
-	if (this->type == TEXT)
-	{
-		delete p;
-		FreetypeRenderer renderer;
-		p = renderer.render(params);
-	}
-
-
 	return g;
 }
 
@@ -686,9 +624,6 @@ std::string PrimitiveNode::toString() const
 	case POLYGON:
 		stream << "(points = " << this->points << ", paths = " << this->paths << ", convexity = " << this->convexity << ")";
 			break;
-	case TEXT:
-		stream << "(" << this->params << ")";
-		break;
 	default:
 		assert(false);
 	}
@@ -705,5 +640,4 @@ void register_builtin_primitives()
 	Builtins::init("square", new PrimitiveModule(SQUARE));
 	Builtins::init("circle", new PrimitiveModule(CIRCLE));
 	Builtins::init("polygon", new PrimitiveModule(POLYGON));
-	Builtins::init("text", new PrimitiveModule(TEXT));
 }
