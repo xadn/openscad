@@ -33,7 +33,8 @@
 #include "printutils.h"
 #include "visitor.h"
 #include "context.h"
-#include "grid.h"
+#include "DrawingCallback.h"
+#include "FreetypeRenderer.h"
 #include <sstream>
 #include <assert.h>
 #include <boost/foreach.hpp>
@@ -49,7 +50,8 @@ enum primitive_type_e {
 	POLYHEDRON,
 	SQUARE,
 	CIRCLE,
-	POLYGON
+	POLYGON,
+	TEXT
 };
 
 class PrimitiveModule : public AbstractModule
@@ -93,6 +95,9 @@ public:
 		case POLYGON:
 			return "polygon";
 			break;
+		case TEXT:
+			return "text";
+			break;
 		default:
 			assert(false && "PrimitiveNode::name(): Unknown primitive type");
 			return AbstractPolyNode::name();
@@ -100,11 +105,14 @@ public:
 	}
 
 	bool center;
-	double x, y, z, h, r1, r2;
+	double x, y, z, h, r1, r2, size;
 	double fn, fs, fa;
 	primitive_type_e type;
 	int convexity;
 	Value points, paths, faces;
+	std::string text;
+	std::string font;
+
 	virtual Geometry *createGeometry() const;
 };
 
@@ -167,6 +175,9 @@ AbstractNode *PrimitiveModule::instantiate(const Context *ctx, const ModuleInsta
 		break;
 	case POLYGON:
 		args += Assignment("points", NULL), Assignment("paths", NULL), Assignment("convexity", NULL);
+		break;
+	case TEXT:
+		args += Assignment("t", NULL);
 		break;
 	default:
 		assert(false && "PrimitiveModule::instantiate(): Unknown node type");
@@ -268,6 +279,15 @@ AbstractNode *PrimitiveModule::instantiate(const Context *ctx, const ModuleInsta
 		node->paths = c.lookup_variable("paths");
 		break;
 	}
+	}
+	
+	if (type == TEXT) {
+		Value t = c.lookup_variable("t");
+		node->text = (t.type() == Value::STRING) ? t.toString() : "";
+		Value size = c.lookup_variable("size");
+		node->size = (size.type() == Value::NUMBER) ? size.toDouble() : 10.0;
+		Value font = c.lookup_variable("font");
+		node->font = (font.type() == Value::STRING) ? font.toString() : "DejaVuSansMono.ttf";
 	}
 
 	node->convexity = c.lookup_variable("convexity", true).toDouble();
@@ -593,6 +613,20 @@ sphere_next_r2:
             p->setConvexity(convexity);
         }
 	}
+	
+	if (this->type == TEXT)
+	{
+		p->is2d = true;
+
+		PRINTB("TEXT: %s", text);
+		DxfData dd;
+		const FreetypeRenderer *renderer = new FreetypeRenderer();
+		DrawingCallback *callback = new DrawingCallback(&dd, fn);
+		renderer->render(callback, text, font, size);
+		dxf_tesselate(p, dd, 0, Vector2d(1,1), true, false, 0);
+		dxf_border_to_ps(p, dd);
+	}
+
 
 	return g;
 }
@@ -633,6 +667,9 @@ std::string PrimitiveNode::toString() const
 	case POLYGON:
 		stream << "(points = " << this->points << ", paths = " << this->paths << ", convexity = " << this->convexity << ")";
 			break;
+	case TEXT:
+		stream << "($fn = " << this->fn << ", text = '" << this->text << ", size = " << this->size << ", font = " << this->font << "')";
+		break;
 	default:
 		assert(false);
 	}
@@ -649,4 +686,5 @@ void register_builtin_primitives()
 	Builtins::init("square", new PrimitiveModule(SQUARE));
 	Builtins::init("circle", new PrimitiveModule(CIRCLE));
 	Builtins::init("polygon", new PrimitiveModule(POLYGON));
+	Builtins::init("text", new PrimitiveModule(TEXT));
 }
