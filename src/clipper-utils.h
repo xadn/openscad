@@ -16,9 +16,7 @@ namespace ClipperUtils {
 	Polygon2d *toPolygon2d(const ClipperLib::Paths &poly);
 	ClipperLib::Paths process(const ClipperLib::Paths &polygons, 
 														ClipperLib::ClipType, ClipperLib::PolyFillType);
-
 	Polygon2d *apply(std::vector<const Polygon2d*> polygons, ClipperLib::ClipType);
-
 };
 
 #endif

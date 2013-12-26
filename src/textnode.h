@@ -21,9 +21,9 @@ public:
 	virtual std::string toString() const;
 	virtual std::string name() const { return "text"; }
 
-	virtual PolySet *evaluate_polyset(class PolySetEvaluator *) const;
+	virtual std::vector<const class Geometry *> createGeometryList() const;
         
-        virtual FreetypeRenderer::Params get_params() const;
+	virtual FreetypeRenderer::Params get_params() const;
 private:
         FreetypeRenderer::Params params;
         friend TextModule;

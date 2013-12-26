@@ -12,15 +12,16 @@
 #include "csgnode.h"
 #include "cgaladvnode.h"
 #include "projectionnode.h"
+#include "textnode.h"
 #include "CGAL_Nef_polyhedron.h"
 #include "cgalutils.h"
 #include "rendernode.h"
 #include "clipper-utils.h"
 #include "polyset-utils.h"
 #include "PolySet.h"
-#include "openscad.h" // get_fragments_from_r()
 #include "printutils.h"
 #include "svg.h"
+#include "calc.h"
 #include "dxfdata.h"
 
 #include <algorithm>
@@ -466,6 +467,30 @@ Response GeometryEvaluator::visit(State &state, const LeafNode &node)
 	return PruneTraversal;
 }
 
+Response GeometryEvaluator::visit(State &state, const TextNode &node)
+{
+	if (state.isPrefix()) {
+		shared_ptr<const Geometry> geom;
+		if (!isCached(node)) {
+			ClipperLib::Clipper sumclipper;
+			std::vector<const Geometry *> geometrylist = node.createGeometryList();
+			BOOST_FOREACH(const Geometry *geometry, geometrylist) {
+				const Polygon2d *polygon = dynamic_cast<const Polygon2d*>(geometry);
+				assert(polygon);
+				sumclipper.AddPaths(ClipperUtils::sanitize(ClipperUtils::fromPolygon2d(*polygon)), ClipperLib::ptSubject, true);
+				delete geometry;
+			}
+			ClipperLib::Paths sumresult;
+			sumclipper.Execute(ClipperLib::ctUnion, sumresult, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
+			geom.reset(ClipperUtils::toPolygon2d(sumresult));
+		}
+		else geom = GeometryCache::instance()->get(this->tree.getIdString(node));
+		addToParent(state, node, geom);
+	}
+	return PruneTraversal;
+}
+
+
 /*!
 	input: List of 2D or 3D objects (not mixed)
 	output: Polygon2d or 3D PolySet
@@ -741,7 +766,7 @@ static Geometry *rotatePolygon(const RotateExtrudeNode &node, const Polygon2d &p
 				return NULL;
 			}
 		}
-		int fragments = get_fragments_from_r(max_x - min_x, node.fn, node.fs, node.fa);
+		int fragments = Calc::get_fragments_from_r(max_x - min_x, node.fn, node.fs, node.fa);
 
 		std::vector<Vector3d> rings[2];
 		rings[0].reserve(o.size());
