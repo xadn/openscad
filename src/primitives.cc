@@ -105,9 +105,6 @@ public:
 	primitive_type_e type;
 	int convexity;
 	Value points, paths, faces;
-	std::string text;
-	std::string font, direction, language, script;
-	FreetypeRenderer::Params params;
 
 	virtual Geometry *createGeometry() const;
 };
