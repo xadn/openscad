@@ -93,7 +93,7 @@ public:
     FreetypeRenderer();
     virtual ~FreetypeRenderer();
 
-	std::vector<const class Geometry *> render(const FreetypeRenderer::Params &params) const;
+	std::vector<const class Polygon2d *> render(const FreetypeRenderer::Params &params) const;
 private:
     const static double scale = 1000;
     FT_Outline_Funcs funcs;

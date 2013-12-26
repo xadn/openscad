@@ -118,7 +118,7 @@ double FreetypeRenderer::calc_y_offset(std::string valign, double ascend, double
 	}
 }
 
-std::vector<const Geometry *> FreetypeRenderer::render(const FreetypeRenderer::Params &params) const
+std::vector<const Polygon2d *> FreetypeRenderer::render(const FreetypeRenderer::Params &params) const
 {
 	FT_Face face;
 	FT_Error error;
@@ -126,18 +126,18 @@ std::vector<const Geometry *> FreetypeRenderer::render(const FreetypeRenderer::P
 	
 	FontCache *cache = FontCache::instance();
 	if (!cache->is_init_ok()) {
-		return std::vector<const Geometry *>();
+		return std::vector<const Polygon2d *>();
 	}
 
 	face = cache->get_font(params.font);
 	if (face == NULL) {
-		return std::vector<const Geometry *>();
+		return std::vector<const Polygon2d *>();
 	}
 	
 	error = FT_Set_Char_Size(face, 0, params.size * scale, 100, 100);
 	if (error) {
 		PRINTB("Can't set font size for font %s", params.font);
-		return std::vector<const Geometry *>();
+		return std::vector<const Polygon2d *>();
 	}
 	
 	hb_font_t *hb_ft_font = hb_ft_font_create(face, NULL);

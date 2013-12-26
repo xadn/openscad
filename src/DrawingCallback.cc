@@ -43,6 +43,7 @@ DrawingCallback::~DrawingCallback()
 void DrawingCallback::start_glyph()
 {
 	this->polygon = new Polygon2d();
+	this->polygon->setSanitized(true);
 }
 
 void DrawingCallback::finish_glyph()
@@ -58,7 +59,7 @@ void DrawingCallback::finish_glyph()
 	if (this->polygon) this->polygons.push_back(this->polygon);
 }
 
-std::vector<const Geometry *> DrawingCallback::get_result()
+std::vector<const Polygon2d *> DrawingCallback::get_result()
 {
 	return this->polygons;
 }

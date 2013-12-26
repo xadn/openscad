@@ -40,7 +40,7 @@ public:
     void finish_glyph();
     void set_glyph_offset(double offset_x, double offset_y);
     void add_glyph_advance(double advance_x, double advance_y);
-	std::vector<const Geometry *> get_result();
+	std::vector<const Polygon2d *> get_result();
 
     void move_to(Vector2d to);
     void line_to(Vector2d to);
@@ -54,7 +54,7 @@ private:
 
 	Outline2d outline;
 	class Polygon2d *polygon;
-	std::vector<const class Geometry *> polygons;
+	std::vector<const class Polygon2d *> polygons;
     
     void add_vertex(Vector2d v);
     

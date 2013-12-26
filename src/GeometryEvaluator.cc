@@ -473,16 +473,8 @@ Response GeometryEvaluator::visit(State &state, const TextNode &node)
 		shared_ptr<const Geometry> geom;
 		if (!isCached(node)) {
 			ClipperLib::Clipper sumclipper;
-			std::vector<const Geometry *> geometrylist = node.createGeometryList();
-			BOOST_FOREACH(const Geometry *geometry, geometrylist) {
-				const Polygon2d *polygon = dynamic_cast<const Polygon2d*>(geometry);
-				assert(polygon);
-				sumclipper.AddPaths(ClipperUtils::sanitize(ClipperUtils::fromPolygon2d(*polygon)), ClipperLib::ptSubject, true);
-				delete geometry;
-			}
-			ClipperLib::Paths sumresult;
-			sumclipper.Execute(ClipperLib::ctUnion, sumresult, ClipperLib::pftNonZero, ClipperLib::pftNonZero);
-			geom.reset(ClipperUtils::toPolygon2d(sumresult));
+			std::vector<const Polygon2d *> polygons = node.createGeometryList();
+			geom.reset(ClipperUtils::apply(polygons, ClipperLib::ctUnion));
 		}
 		else geom = GeometryCache::instance()->get(this->tree.getIdString(node));
 		addToParent(state, node, geom);
