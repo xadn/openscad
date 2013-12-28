@@ -60,6 +60,7 @@ typedef CGAL::Polyhedron_3<CGAL_Kernel3> CGAL_Polyhedron;
 typedef CGAL_Polyhedron::HalfedgeDS CGAL_HDS;
 typedef CGAL::Polyhedron_incremental_builder_3<CGAL_HDS> CGAL_Polybuilder;
 
+typedef CGAL::Plane_3<CGAL_Kernel3> CGAL_Plane_3;
 typedef CGAL::Point_3<CGAL_Kernel3> CGAL_Point_3;
 typedef CGAL::Iso_cuboid_3<CGAL_Kernel3> CGAL_Iso_cuboid_3;
 

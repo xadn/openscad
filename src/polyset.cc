@@ -42,7 +42,6 @@
 
 PolySet::PolySet() : grid(GRID_FINE), is2d(false), convexity(1)
 {
-	this->append_volume();
 }
 
 PolySet::~PolySet()
@@ -68,11 +67,12 @@ std::string PolySet::dump() const
 			out << "\n   vertex:" << v.transpose();
 		}
 	}
+	out << "\n volumes data:";
 	for (size_t i = 0; i < volumes.size(); i++) {
-		out << "\n  volumes begin:";
+		out << "\n  volume (pgon indexes): [";
 		for (size_t j = 0; j < volumes[i].size(); j++) {
-			out << "\n   polygon index:" << volumes[i][j];
-		}
+			out << volumes[i][j] << ",";
+		} out << "]";
 	}
 	out << "\n borders data:";
 	for (size_t i = 0; i < borders.size(); i++) {
@@ -95,7 +95,7 @@ void PolySet::append_volume()
 void PolySet::append_poly()
 {
 	polygons.push_back(Polygon());
-	volumes.back().push_back(polygons.size());
+	if (volumes.size()) volumes.back().push_back(polygons.size());
 }
 
 void PolySet::append_vertex(double x, double y, double z)

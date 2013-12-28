@@ -63,23 +63,24 @@ distributed, this file may become obsolete and can be deleted from OpenSCAD
 #include <CGAL/assertions.h>
 
 #include <CGAL/Constrained_triangulation_2.h>
+//#include <CGAL/Constrained_Delaunay_triangulation_2.h>
 #include <CGAL/Triangulation_data_structure_2.h>
 #include <CGAL/Projection_traits_xy_3.h>
 #include <CGAL/Projection_traits_yz_3.h>
 #include <CGAL/Projection_traits_xz_3.h>
 #include <CGAL/Constrained_triangulation_face_base_2.h>
 
-#include "printutils.h"
-
-namespace nefworkaround {
+#include <CGAL/exceptions.h> // added for OpenSCAD
+#include "printutils.h" // added for OpenSCAD
+namespace nefworkaround { // added for OpenSCAD
 
 template<typename Kernel, typename Nef>
 class Triangulation_handler2 {
-
     typedef typename CGAL::Triangulation_vertex_base_2<Kernel>               Vb;
     typedef typename CGAL::Constrained_triangulation_face_base_2<Kernel>     Fb;
     typedef typename CGAL::Triangulation_data_structure_2<Vb,Fb>             TDS;
     typedef typename CGAL::Constrained_triangulation_2<Kernel,TDS>           CT;
+    //typedef typename CGAL::Constrained_Delaunay_triangulation_2<Kernel,TDS>           CT;
 
     typedef typename CT::Face_handle           Face_handle;
     typedef typename CT::Vertex_handle         CTVertex_handle;
@@ -251,8 +252,8 @@ public:
 	    th.handle_triangles(B, VI);
 	  } else
 	    CGAL_error_msg( "wrong value");
-	 } catch(...) { // added for OpenSCAD
-	  PRINT("ERROR: CGAL NefPolyhedron Triangulation failed"); // added for OpenSCAD
+	 } catch( const CGAL::Failure_exception &e ) { // added for OpenSCAD
+	  PRINTB("WARNING: CGAL NefPolyhedron Triangulation failed: %s",e.what()); // added for OpenSCAD
 	  this->error=true; //added for OpenSCAD
 	 } // added for OpenSCAD
 	} else {

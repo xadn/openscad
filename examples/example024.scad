@@ -30,3 +30,4 @@ difference() {
   rotate([45, atan(1/sqrt(2)), 0]) menger();
   translate([0,0,-D]) cube(2*D, center=true);
 }
+

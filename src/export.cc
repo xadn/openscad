@@ -32,23 +32,39 @@
 #ifdef ENABLE_CGAL
 #include "CGAL_Nef_polyhedron.h"
 #include "cgal.h"
+#include "cgalutils.h"
+#include "dxftess.h"
 
-/*!
-	Saves the current 3D CGAL Nef polyhedron as STL to the given file.
-	The file must be open.
- */
-void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
+// return true on error, false on success
+bool createSTLFromPolyset(PolySet &ps, std::ostream &output)
 {
-	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
-	try {
-	CGAL_Polyhedron P;
-	//root_N->p3->convert_to_Polyhedron(P);
-	bool err = nefworkaround::convert_to_Polyhedron<CGAL_Kernel3>( *(root_N->p3), P );
-	if (err) {
-	        PRINT("ERROR: CGAL NefPolyhedron->Polyhedron conversion failed");
-		return;
+	if (ps.polygons.size()==0) return true;
+	output << "solid OpenSCAD_Model\n";
+        for (size_t i = 0; i < ps.polygons.size(); i++) {
+		const PolySet::Polygon *poly = &ps.polygons[i];
+		if (poly->size()!=3) {
+			PRINT("ERROR: PolySet has non-triangle face");
+			PRINTB("polyindex: %i",i);
+			output.seekp(0);
+			return true;
+		}
+		const Vector3d &v1 = poly->at(0);
+		const Vector3d &v2 = poly->at(1);
+		const Vector3d &v3 = poly->at(2);
+		output << "  facet normal 1 0 0\n";
+		output << "    outer loop\n";
+		output << "      vertex "<<v1.x()<<" "<<v1.y()<<" "<<v1.z()<<"\n";
+		output << "      vertex "<<v2.x()<<" "<<v2.y()<<" "<<v2.z()<<"\n";
+		output << "      vertex "<<v3.x()<<" "<<v3.y()<<" "<<v3.z()<<"\n";
+		output << "    endloop\n";
+		output << "  endfacet\n";
 	}
+	output << "endsolid OpenSCAD_Model\n";
+	return false;
+}
 
+void createSTLFromPolyhedron3( CGAL_Polyhedron &P, std::ostream &output)
+{
 	typedef CGAL_Polyhedron::Vertex                                 Vertex;
 	typedef CGAL_Polyhedron::Vertex_const_iterator                  VCI;
 	typedef CGAL_Polyhedron::Facet_const_iterator                   FCI;
@@ -114,15 +130,45 @@ void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
 
 	output << "endsolid OpenSCAD_Model\n";
 	setlocale(LC_NUMERIC, "");      // Set default locale
+}
 
+/*!
+	Saves the current 3D CGAL Nef polyhedron as STL to the given file.
+	The file must be open.
+ */
+void export_stl(CGAL_Nef_polyhedron *root_N, std::ostream &output)
+{
+	bool err = false;
+	CGAL_Polyhedron P;
+
+	CGAL::Failure_behaviour old_behaviour = CGAL::set_error_behaviour(CGAL::THROW_EXCEPTION);
+	try {
+		//root_N->p3->convert_to_Polyhedron(P);
+		err = nefworkaround::convert_to_Polyhedron<CGAL_Kernel3>( *(root_N->p3), P );
 	}
-	catch (const CGAL::Assertion_exception &e) {
+	catch (const CGAL::Failure_exception &e) {
 		PRINTB("CGAL error in CGAL_Nef_polyhedron3::convert_to_Polyhedron(): %s", e.what());
-	}
-	catch (...) {
-		PRINT("CGAL unknown error in CGAL_Nef_polyhedron3::convert_to_Polyhedron()");
+		err = true;
 	}
 	CGAL::set_error_behaviour(old_behaviour);
+
+	err = true; // true will debug nef->polyset
+	if (!err) {
+		createSTLFromPolyhedron3( P, output );
+	} else {
+	        PRINT("WARNING: Attempting direct Nef->PolySet conversion.");
+		PolySet ps,ps2;
+		err = createPolySetFromNefPolyhedron3( *(root_N->p3), ps );
+		if (err) { PRINT("ERROR: Nef->PolySet failed"); }
+		else {
+			//tessellate_3d_faces( ps, ps2 );
+			//if (err) PRINT("ERROR: tessellate_3d_faces failed");
+			//err = createSTLFromPolyset( ps2, output );
+			err = createSTLFromPolyset( ps, output );
+			if (err) { PRINT("ERROR: PolySet->STL failed"); }
+		}
+	}
+	if (err) PRINT("ERROR: Empty STL output");
 }
 
 void export_off(CGAL_Nef_polyhedron *root_N, std::ostream &output)

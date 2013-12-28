@@ -16,6 +16,7 @@
 #include <CGAL/Delaunay_mesh_face_base_2.h>
 #include <CGAL/Delaunay_mesh_criteria_2.h>
 #include <CGAL/Mesh_2/Face_badness.h>
+#include <CGAL/convex_hull_2.h>
 #ifdef PREV_NDEBUG
 #define NDEBUG PREV_NDEBUG
 #endif
@@ -25,6 +26,7 @@ typedef CGAL::Triangulation_vertex_base_2<K> Vb;
 typedef CGAL::Delaunay_mesh_face_base_2<K> Fb;
 typedef CGAL::Triangulation_data_structure_2<Vb, Fb> Tds;
 typedef CGAL::Constrained_Delaunay_triangulation_2<K, Tds, CGAL::Exact_predicates_tag > CDT;
+typedef CGAL::Polygon_2<K> CDTPolygon;
 //typedef CGAL::Delaunay_mesh_criteria_2<CDT> Criteria;
 
 typedef CDT::Vertex_handle Vertex_handle;
@@ -378,11 +380,11 @@ Vector2d get_projected_point( Vector3d v, projection_t projection ) {
 
 CGAL_Point_3 cgp( Vector3d v ) { return CGAL_Point_3( v.x(), v.y(), v.z() ); }
 
-/* Find a 'good' 2d projection for a given 3d polygon. the XY, YZ, or XZ 
-plane. This is needed because near-planar polygons in 3d can have 'bad' 
-projections into 2d. For example if the square 0,0,0 0,1,0 0,1,1 0,0,1 
-is projected onto the XY plane you will not get a polygon, you wil get 
-a skinny line thing. It's better to project that square onto the yz 
+/* Find a 'good' 2d projection for a given 3d polygon. the XY, YZ, or XZ
+plane. This is needed because near-planar polygons in 3d can have 'bad'
+projections into 2d. For example if the square 0,0,0 0,1,0 0,1,1 0,0,1
+is projected onto the XY plane you will not get a polygon, you wil get
+a skinny line thing. It's better to project that square onto the yz
 plane.*/
 projection_t find_good_projection( PolySet::Polygon pgon ) {
 	// step 1 - find 3 non-collinear points in the input
@@ -479,12 +481,13 @@ bool triangulate_polygon( const PolySet::Polygon &pgon, std::vector<PolySet::Pol
 	return err;
 }
 
-/* Given a 3d PolySet with 'near planar' polygonal faces, Tessellate the
-faces. As of writing, our only tessellation method is Triangulation
-using CGAL's Constrained Delaunay algorithm. This code assumes the input
-polyset has simple polygon faces with no holes, no self intersections, no
-duplicate points, and proper orientation. */
-void tessellate_3d_faces( const PolySet &inps, PolySet &outps ) {
+/* Given a 3d PolySet with 'near planar' polygonal faces, create a new
+identical PolySet but with the faces tessellated. As of writing, our
+only tessellation method is Triangulation using CGAL's Constrained
+Delaunay algorithm. This code assumes the input polyset has simple
+polygon faces with no holes, no self intersections, no duplicate points,
+and proper orientation. */
+bool tessellate_3d_faces( const PolySet &inps, PolySet &outps ) {
         for (size_t i = 0; i < inps.polygons.size(); i++) {
 		const PolySet::Polygon pgon = inps.polygons[i];
 		if (pgon.size()<3) {
@@ -500,12 +503,14 @@ void tessellate_3d_faces( const PolySet &inps, PolySet &outps ) {
 		bool err = triangulate_polygon( pgon, triangles, goodproj );
 		if (!err) for (size_t j=0;j<triangles.size();j++) {
 			PolySet::Polygon t = triangles[j];
+			if (t.size()<3) continue;
 			outps.append_poly();
 			outps.append_vertex(t[0].x(),t[0].y(),t[0].z());
 			outps.append_vertex(t[1].x(),t[1].y(),t[1].z());
 			outps.append_vertex(t[2].x(),t[2].y(),t[2].z());
 		}
         }
+	return false;
 }
 
 // End of PolySet face tessellation code
